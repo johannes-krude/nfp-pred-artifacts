@@ -1,0 +1,338 @@
+From 964eb50fd991dc259c53069a7d848bf3937f3fbf Mon Sep 17 00:00:00 2001
+From: Johannes Krude <johannes.krude@comsys.rwth-aachen.de>
+Date: Mon, 12 Oct 2020 17:51:47 +0200
+Subject: [PATCH] use array ptr from gprB_23
+
+---
+ src/bpf/fw.h      |   2 +
+ src/bpf/jit.c     |  53 ++++++++++++++-------
+ src/bpf/main.c    |   2 +
+ src/bpf/main.h    |   5 ++
+ src/bpf/offload.c | 115 +++++++++++++++++++++++++---------------------
+ 5 files changed, 109 insertions(+), 68 deletions(-)
+
+diff --git a/src/bpf/fw.h b/src/bpf/fw.h
+index 4268a7e..c338ef7 100644
+--- a/src/bpf/fw.h
++++ b/src/bpf/fw.h
+@@ -49,6 +49,8 @@ struct nfp_bpf_cap_tlv_maps {
+ 	__le32 max_key_sz;
+ 	__le32 max_val_sz;
+ 	__le32 max_elem_sz;
++	__le32 array_sz;
++	__le32 array_ptr_sh8;
+ };
+ 
+ /*
+diff --git a/src/bpf/jit.c b/src/bpf/jit.c
+index cf00e54..9487527 100644
+--- a/src/bpf/jit.c
++++ b/src/bpf/jit.c
+@@ -1728,8 +1728,17 @@ static int
+ map_call_stack_common(struct nfp_prog *nfp_prog, struct nfp_insn_meta *meta)
+ {
+ 	bool load_lm_ptr;
+-	u32 ret_tgt;
++	//u32 ret_tgt;
+ 	s64 lm_off;
++	struct bpf_map *map;
++	swreg mask;
++	unsigned long rval_size;
++
++	/* determine map parameters */
++	if (nfp_prog->bpf->maps_in_use != 1)
++		return -EOPNOTSUPP;
++	map = &container_of(nfp_prog->bpf->map_list.next, struct nfp_bpf_map, l)->offmap->map;
++	rval_size = roundup_pow_of_two(map->value_size);
+ 
+ 	/* We only have to reload LM0 if the key is not at start of stack */
+ 	lm_off = nfp_prog->stack_frame_depth;
+@@ -1739,21 +1748,33 @@ map_call_stack_common(struct nfp_prog *nfp_prog, struct nfp_insn_meta *meta)
+ 	/* Set LM0 to start of key */
+ 	if (load_lm_ptr)
+ 		emit_csr_wr(nfp_prog, reg_b(2 * 2), NFP_CSR_ACT_LM_ADDR0);
+-	if (meta->func_id == BPF_FUNC_map_update_elem)
+-		emit_csr_wr(nfp_prog, reg_b(3 * 2), NFP_CSR_ACT_LM_ADDR2);
+-
+-	emit_br_relo(nfp_prog, BR_UNC, BR_OFF_RELO + meta->func_id,
+-		     2, RELO_BR_HELPER);
+-	ret_tgt = nfp_prog_current_offset(nfp_prog) + 2;
+-
+-	/* Load map ID into A0 */
+-	wrp_mov(nfp_prog, reg_a(0), reg_a(2));
+-
+-	/* Load the return address into B0 */
+-	wrp_immed_relo(nfp_prog, reg_b(0), ret_tgt, RELO_IMMED_REL);
+-
+-	if (!nfp_prog_confirm_current_offset(nfp_prog, ret_tgt))
+-		return -EINVAL;
++	//if (meta->func_id == BPF_FUNC_map_update_elem)
++	//	emit_csr_wr(nfp_prog, reg_b(3 * 2), NFP_CSR_ACT_LM_ADDR2);
++
++	/* Load array addr into 1 */
++	wrp_reg_mov(nfp_prog, reg_a(1), map_reg(nfp_prog));
++	/* Load offset into 0 */
++	if (load_lm_ptr) {
++		wrp_nops(nfp_prog, 1);
++		wrp_immed(nfp_prog, imm_a(nfp_prog), (map->max_entries*rval_size)-1);
++		mask = imm_a(nfp_prog);
++	} else {
++		mask = re_load_imm_any(nfp_prog, (map->max_entries*rval_size)-1, imm_a(nfp_prog));
++	}
++	emit_shf(nfp_prog, reg_both(0), mask, SHF_OP_AND, reg_lm(0, 0), SHF_SC_L_SHF, ilog2(rval_size));
++
++	//emit_br_relo(nfp_prog, BR_UNC, BR_OFF_RELO + meta->func_id,
++	//	     2, RELO_BR_HELPER);
++	//ret_tgt = nfp_prog_current_offset(nfp_prog) + 2;
++	//
++	///* Load map ID into A0 */
++	//wrp_mov(nfp_prog, reg_a(0), reg_a(2));
++	//
++	///* Load the return address into B0 */
++	//wrp_immed_relo(nfp_prog, reg_b(0), ret_tgt, RELO_IMMED_REL);
++	//
++	//if (!nfp_prog_confirm_current_offset(nfp_prog, ret_tgt))
++	//	return -EINVAL;
+ 
+ 	/* Reset the LM0 pointer */
+ 	if (!load_lm_ptr)
+diff --git a/src/bpf/main.c b/src/bpf/main.c
+index f94ac22..3ef002e 100644
+--- a/src/bpf/main.c
++++ b/src/bpf/main.c
+@@ -272,6 +272,8 @@ nfp_bpf_parse_cap_maps(struct nfp_app_bpf *bpf, void __iomem *value, u32 length)
+ 	bpf->maps.max_key_sz = readl(&cap->max_key_sz);
+ 	bpf->maps.max_val_sz = readl(&cap->max_val_sz);
+ 	bpf->maps.max_elem_sz = readl(&cap->max_elem_sz);
++	bpf->maps.array_sz = readl(&cap->array_sz);
++	bpf->maps.array_ptr = ((u64) readl(&cap->array_ptr_sh8))<<8;
+ 
+ 	return 0;
+ }
+diff --git a/src/bpf/main.h b/src/bpf/main.h
+index 885b607..4df1ea4 100644
+--- a/src/bpf/main.h
++++ b/src/bpf/main.h
+@@ -18,6 +18,7 @@
+ 
+ #include "../ccm.h"
+ #include "../nfp_asm.h"
++#include "../nfpcore/nfp_cpp.h"
+ #include "fw.h"
+ 
+ #define cmsg_warn(bpf, msg...)	nn_dp_warn(&(bpf)->app->ctrl->dp, msg)
+@@ -54,6 +55,7 @@ enum static_regs {
+ 	STATIC_REG_IMM		= 21, /* Bank AB */
+ 	STATIC_REG_STACK	= 22, /* Bank A */
+ 	STATIC_REG_PKT_LEN	= 22, /* Bank B */
++	STATIC_REG_MAP		= 23, /* Bank B */
+ };
+ 
+ enum pkt_vec {
+@@ -70,6 +72,7 @@ enum pkt_vec {
+ #define pv_qsel_set(np)	reg_lm(1, PKT_VEC_QSEL_SET)
+ #define pv_qsel_val(np)	reg_lm(1, PKT_VEC_QSEL_VAL)
+ 
++#define map_reg(np)	reg_b(STATIC_REG_MAP)
+ #define stack_reg(np)	reg_a(STATIC_REG_STACK)
+ #define stack_imm(np)	imm_b(np)
+ #define plen_reg(np)	reg_b(STATIC_REG_PKT_LEN)
+@@ -163,6 +166,8 @@ struct nfp_app_bpf {
+ 		u32 max_key_sz;
+ 		u32 max_val_sz;
+ 		u32 max_elem_sz;
++		u32 array_sz;
++		u64 array_ptr;
+ 	} maps;
+ 
+ 	struct {
+diff --git a/src/bpf/offload.c b/src/bpf/offload.c
+index e168ed5..141f8fa 100644
+--- a/src/bpf/offload.c
++++ b/src/bpf/offload.c
+@@ -28,6 +28,8 @@
+ #include "../nfp_app.h"
+ #include "../nfp_net_ctrl.h"
+ #include "../nfp_net.h"
++#include "../nfpcore/nfp_cpp.h"
++#include "../nfpcore/nfp6000/nfp6000.h"
+ 
+ static int
+ nfp_map_ptr_record(struct nfp_app_bpf *bpf, struct nfp_prog *nfp_prog,
+@@ -310,13 +312,28 @@ static int
+ nfp_bpf_map_lookup_entry(struct bpf_offloaded_map *offmap,
+ 			 void *key, void *value)
+ {
++	struct nfp_bpf_map *nfp_map = offmap->dev_priv;
++	struct nfp_app_bpf *bpf = nfp_map->bpf;
++	const u32 dram = NFP_CPP_ID(NFP_CPP_TARGET_MU, NFP_CPP_ACTION_RW, 0) |
++		NFP_ISL_EMEM0;
++	u32 index = *((u32 *) key);
++	u64 offset = index * roundup_pow_of_two(offmap->map.value_size);
++	size_t i;
+ 	int err;
+ 
+-	err = nfp_bpf_ctrl_lookup_entry(offmap, key, value);
+-	if (err)
++	if (index >= offmap->map.max_entries)
++		return -ENOENT;
++	if (offset%4 || offmap->map.value_size%4)
++		return -EOPNOTSUPP;
++
++	err = nfp_cpp_read(bpf->app->cpp, dram, bpf->maps.array_ptr + offset,
++			value, offmap->map.value_size);
++	if (err < 0)
+ 		return err;
+ 
+-	nfp_map_bpf_byte_swap(offmap->dev_priv, value);
++	for (i = 0; i < offmap->map.value_size/4; i++)
++		((u32 *) value)[i] = (__force u32)be32_to_cpu(((u32 *) value)[i]);
++	nfp_map_bpf_byte_swap(nfp_map, value);
+ 	return 0;
+ }
+ 
+@@ -324,26 +341,49 @@ static int
+ nfp_bpf_map_update_entry(struct bpf_offloaded_map *offmap,
+ 			 void *key, void *value, u64 flags)
+ {
+-	nfp_map_bpf_byte_swap(offmap->dev_priv, value);
+-	nfp_map_bpf_byte_swap_record(offmap->dev_priv, value);
+-	return nfp_bpf_ctrl_update_entry(offmap, key, value, flags);
++	struct nfp_bpf_map *nfp_map = offmap->dev_priv;
++	struct nfp_app_bpf *bpf = nfp_map->bpf;
++	const u32 dram = NFP_CPP_ID(NFP_CPP_TARGET_MU, NFP_CPP_ACTION_RW, 0) |
++		NFP_ISL_EMEM0;
++	u32 index = *((u32 *) key);
++	u64 offset = index * roundup_pow_of_two(offmap->map.value_size);
++	size_t i;
++	int err;
++
++	if (index >= offmap->map.max_entries)
++		return -ENOENT;
++	if (offset%4 || offmap->map.value_size%4)
++		return -EOPNOTSUPP;
++
++	nfp_map_bpf_byte_swap(nfp_map, value);
++	nfp_map_bpf_byte_swap_record(nfp_map, value);
++	for (i = 0; i < offmap->map.value_size/4; i++)
++		((u32 *) value)[i] = (__force u32)cpu_to_be32(((u32 *) value)[i]);
++	err = nfp_cpp_write(bpf->app->cpp, dram, bpf->maps.array_ptr + offset,
++			value, offmap->map.value_size);
++	if (err < 0)
++		return err;
++
++	return 0;
+ }
+ 
+ static int
+ nfp_bpf_map_get_next_key(struct bpf_offloaded_map *offmap,
+ 			 void *key, void *next_key)
+ {
+-	if (!key)
+-		return nfp_bpf_ctrl_getfirst_entry(offmap, next_key);
+-	return nfp_bpf_ctrl_getnext_entry(offmap, key, next_key);
++	return -EOPNOTSUPP;
++	//if (!key)
++	//	return nfp_bpf_ctrl_getfirst_entry(offmap, next_key);
++	//return nfp_bpf_ctrl_getnext_entry(offmap, key, next_key);
+ }
+ 
+ static int
+ nfp_bpf_map_delete_elem(struct bpf_offloaded_map *offmap, void *key)
+ {
+-	if (offmap->map.map_type == BPF_MAP_TYPE_ARRAY)
+-		return -EINVAL;
+-	return nfp_bpf_ctrl_del_entry(offmap, key);
++	return -EOPNOTSUPP;
++	//if (offmap->map.map_type == BPF_MAP_TYPE_ARRAY)
++	//	return -EINVAL;
++	//return nfp_bpf_ctrl_del_entry(offmap, key);
+ }
+ 
+ static const struct bpf_map_dev_ops nfp_bpf_map_ops = {
+@@ -357,8 +397,8 @@ static int
+ nfp_bpf_map_alloc(struct nfp_app_bpf *bpf, struct bpf_offloaded_map *offmap)
+ {
+ 	struct nfp_bpf_map *nfp_map;
++	size_t array_size;
+ 	unsigned int use_map_size;
+-	long long int res;
+ 
+ 	if (!bpf->maps.types)
+ 		return -EOPNOTSUPP;
+@@ -369,40 +409,18 @@ nfp_bpf_map_alloc(struct nfp_app_bpf *bpf, struct bpf_offloaded_map *offmap)
+ 		return -EINVAL;
+ 	}
+ 
+-	if (!(bpf->maps.types & 1 << offmap->map.map_type)) {
+-		pr_info("map type not supported\n");
+-		return -EOPNOTSUPP;
+-	}
+-	if (bpf->maps.max_maps == bpf->maps_in_use) {
+-		pr_info("too many maps for a device\n");
+-		return -ENOMEM;
+-	}
+-	if (bpf->maps.max_elems - bpf->map_elems_in_use <
+-	    offmap->map.max_entries) {
+-		pr_info("map with too many elements: %u, left: %u\n",
+-			offmap->map.max_entries,
+-			bpf->maps.max_elems - bpf->map_elems_in_use);
+-		return -ENOMEM;
+-	}
++	array_size = roundup_pow_of_two(offmap->map.value_size) * offmap->map.max_entries;
+ 
+-	if (round_up(offmap->map.key_size, 8) +
+-	    round_up(offmap->map.value_size, 8) > bpf->maps.max_elem_sz) {
+-		pr_info("map elements too large: %u, FW max element size (key+value): %u\n",
+-			round_up(offmap->map.key_size, 8) +
+-			round_up(offmap->map.value_size, 8),
+-			bpf->maps.max_elem_sz);
+-		return -ENOMEM;
+-	}
+-	if (offmap->map.key_size > bpf->maps.max_key_sz) {
+-		pr_info("map key size %u, FW max is %u\n",
+-			offmap->map.key_size, bpf->maps.max_key_sz);
++	if (offmap->map.map_type != BPF_MAP_TYPE_ARRAY)
++		return -EOPNOTSUPP;
++	if (bpf->maps_in_use)
+ 		return -ENOMEM;
+-	}
+-	if (offmap->map.value_size > bpf->maps.max_val_sz) {
+-		pr_info("map value size %u, FW max is %u\n",
+-			offmap->map.value_size, bpf->maps.max_val_sz);
++	if (offmap->map.key_size != 4)
++		return -EINVAL;
++	if (offmap->map.max_entries != roundup_pow_of_two(offmap->map.max_entries))
++		return -EINVAL;
++	if (array_size > bpf->maps.array_sz)
+ 		return -ENOMEM;
+-	}
+ 
+ 	use_map_size = DIV_ROUND_UP(offmap->map.value_size, 4) *
+ 		       sizeof_field(struct nfp_bpf_map, use_map[0]);
+@@ -416,13 +434,7 @@ nfp_bpf_map_alloc(struct nfp_app_bpf *bpf, struct bpf_offloaded_map *offmap)
+ 	nfp_map->bpf = bpf;
+ 	spin_lock_init(&nfp_map->cache_lock);
+ 
+-	res = nfp_bpf_ctrl_alloc_map(bpf, &offmap->map);
+-	if (res < 0) {
+-		kfree(nfp_map);
+-		return res;
+-	}
+-
+-	nfp_map->tid = res;
++	nfp_map->tid = 0;
+ 	offmap->dev_ops = &nfp_bpf_map_ops;
+ 	bpf->maps_in_use++;
+ 	bpf->map_elems_in_use += offmap->map.max_entries;
+@@ -436,7 +448,6 @@ nfp_bpf_map_free(struct nfp_app_bpf *bpf, struct bpf_offloaded_map *offmap)
+ {
+ 	struct nfp_bpf_map *nfp_map = offmap->dev_priv;
+ 
+-	nfp_bpf_ctrl_free_map(bpf, nfp_map);
+ 	dev_consume_skb_any(nfp_map->cache);
+ 	WARN_ON_ONCE(nfp_map->cache_blockers);
+ 	list_del_init(&nfp_map->l);
+-- 
+2.25.1
+

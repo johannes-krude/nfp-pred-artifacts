@@ -1,0 +1,30 @@
+#!/usr/bin/ruby
+
+require "trollop"
+require "pathname"
+
+opts = Trollop::options do
+	banner "usage: [options]"
+	opt(:o, "out dir", required: true, type: String)
+	opt(:s, "source dir, required: true", type: String)
+	opt(:e, "out file extension", required: true, type: String)
+end
+
+sourcedir = Pathname.new(opts[:s])
+outdir = Pathname.new(opts[:o])
+parts = ARGV.map { |s| s.split(".") }.flatten
+outfile = outdir/"#{parts.join(".")}.#{opts[:e]}"
+depfile = outdir/"#{parts.join(".")}.d"
+
+num = parts.size.times.find { |i| (sourcedir/"#{parts[(0..(-i-1))].join(".")}.sh").executable? }
+Trollop::die("no matching executable found") unless num
+
+executable = sourcedir/"#{parts[(0..(-num-1))].join(".")}.sh"
+args = parts[-num..-1]
+
+depfile.write("#{outfile}: #{executable}\n")
+
+unless system(executable.to_s, *args, 1 => [outfile.to_s, "w"])
+	outfile.unlink
+	exit -1
+end

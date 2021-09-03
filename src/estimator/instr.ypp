@@ -1,0 +1,363 @@
+%define api.prefix {instr_} 
+
+%code requires {
+	#include "estimator/instr.hpp"
+
+	#include <cstdint>
+}
+
+%code provides {
+	#define YY_DECL int instr_lex()
+	YY_DECL;
+}
+
+%{
+
+#include <string>
+#include <cstring>
+#include <err.h>
+
+int instr_error(void* out, std::string& in, const char* msg){
+	errx(-1, "instr parser '%s': %s", in.c_str(), msg);
+}
+
+%}
+
+%parse-param {const instr **out} {std::string& in}
+
+%define parse.error verbose
+
+%start S
+
+%token alu
+%token alu_shf
+%token asr
+%token bcc
+%token bcs
+%token beq
+%token bge
+%token bgt
+%token ble
+%token blt
+%token bmi
+%token bne
+%token bpl
+%token bvc
+%token bvs
+%token br
+%token dbl_shf
+%token immed
+%token immed_w1
+%token ld_field
+%token ld_field_w_clr
+%token local_csr_wr
+%token mem
+%token mul_step
+%token nop 
+
+%token Indexed
+%token Gpr
+%token Xfer
+%token Local_csr
+%token Omitted
+%token Alu_op
+%token Mem_read_op Mem_write_op
+%token Shift ShiftARight
+%token Mul_step_tok
+%token Mul_step_last_tok
+%token gpr_wrboth
+%token defer
+%token ctx_swap
+%token indirect_ref
+
+%token UInt
+%token HexInt
+%token Mask
+%token Id
+%token Addr
+
+%union {
+	const instr* i;
+	const instr::dst* dst;
+	const instr::src* src;
+	const instr::constant* constant;
+	const instr::gpr* gpr;
+	const instr::xfer_in* xfer_in;
+	const instr::xfer_out* xfer_out;
+	const instr::lmindexed* lmindexed;
+	const instr::local_csr* local_csr;
+	const instr::omitted* omitted;
+	const instr::alu_op* alu_op;
+	const instr::mem_read_op* mem_read_op;
+	const instr::mem_write_op* mem_write_op;
+	const instr::shift_cntl* shift_cntl;
+	const instr::shift_cntl::aright* shift_cntl_aright;
+	const instr::mul_step_tok* mul_step_tok;
+	const instr::mul_step_tok::last* mul_step_tok_last;
+	uint32_t uint;
+	bool flag;
+}
+
+%type<i> INSTR
+%type<i> ALU
+%type<i> ALU_SHF
+%type<i> ASR
+%type<i> BCC BCS BEQ BGE BGT BLE BLT BMI BNE BPL BVC BVS
+%type<i> BR
+%type<i> DBL_SHF
+%type<i> IMMED
+%type<i> IMMED_W1
+%type<i> LD_FIELD
+%type<i> LD_FIELD_W_CLR
+%type<i> LOCAL_CSR_WR
+%type<i> MEM_READ MEM_WRITE
+%type<i> MUL_STEP
+%type<i> NOP
+%type<dst> DST
+%type<src> SRC
+%type<constant> CONSTANT
+%type<gpr> Gpr
+%type<uint> Xfer
+%type<xfer_in> XFER_IN
+%type<xfer_out> XFER_OUT
+%type<lmindexed> Indexed
+%type<local_csr> Local_csr
+%type<omitted> Omitted
+%type<alu_op> Alu_op
+%type<mem_read_op> Mem_read_op
+%type<mem_write_op> Mem_write_op
+%type<shift_cntl> Shift SHIFT OPT_SHIFT
+%type<shift_cntl_aright> ShiftARight
+%type<mul_step_tok> Mul_step_tok;
+%type<mul_step_tok_last> Mul_step_last_tok;
+%type<flag> GPR_WRBOTH
+%type<uint> DEFER
+%type<uint> CTX_SWAP
+%type<uint> INSTR_NUM
+%type<uint> Id INT UInt HexInt Mask
+
+%%
+S:
+	INSTR { *out = $1; }
+INSTR:
+	ALU
+	| ALU_SHF
+	| ASR
+	| BCC | BCS | BGE | BGT | BEQ | BLE | BLT | BMI | BNE | BPL | BVC | BVS
+	| BR
+	| DBL_SHF
+	| IMMED
+	| IMMED_W1
+	| LD_FIELD
+	| LD_FIELD_W_CLR
+	| LOCAL_CSR_WR
+	| MEM_READ | MEM_WRITE
+	| MUL_STEP
+	| NOP 
+ALU:
+	INSTR_NUM alu '[' DST ',' SRC ',' Alu_op ',' SRC ']' GPR_WRBOTH {
+		$$ = new instr::alu($1, $4, $6, $8, $10, $12);
+	}
+ALU_SHF:
+	INSTR_NUM alu_shf '[' DST ',' SRC ',' Alu_op ',' SRC ',' SHIFT ']' GPR_WRBOTH {
+		$$ = new instr::alu_shf($1, $4, $6, $8, $10, $12, $14);
+	}
+ASR:
+	INSTR_NUM asr '[' DST ',' SRC ',' ShiftARight ']' GPR_WRBOTH {
+		$$ = new instr::asr($1, $4, $6, $8, $10);
+	}
+BCC:
+	INSTR_NUM bcc '[' Id ']' DEFER {
+		$$ = new instr::bcc($1, $4, $6);
+	}
+BCS:
+	INSTR_NUM bcs '[' Id ']' DEFER {
+		$$ = new instr::bcs($1, $4, $6);
+	}
+BGE:
+	INSTR_NUM bge '[' Id ']' DEFER {
+		$$ = new instr::bge($1, $4, $6);
+	}
+BGT:
+	INSTR_NUM bgt '[' Id ']' DEFER {
+		$$ = new instr::bgt($1, $4, $6);
+	}
+BEQ:
+	INSTR_NUM beq '[' Id ']' DEFER {
+		$$ = new instr::beq($1, $4, $6);
+	}
+BLE:
+	INSTR_NUM ble '[' Id ']' DEFER {
+		$$ = new instr::ble($1, $4, $6);
+	}
+BLT:
+	INSTR_NUM blt '[' Id ']' DEFER {
+		$$ = new instr::blt($1, $4, $6);
+	}
+BMI:
+	INSTR_NUM bmi '[' Id ']' DEFER {
+		$$ = new instr::bmi($1, $4, $6);
+	}
+BNE:
+	INSTR_NUM bne '[' Id ']' DEFER {
+		$$ = new instr::bne($1, $4, $6);
+	}
+BPL:
+	INSTR_NUM bpl '[' Id ']' DEFER {
+		$$ = new instr::bpl($1, $4, $6);
+	}
+BVC:
+	INSTR_NUM bvc '[' Id ']' DEFER {
+		$$ = new instr::bvc($1, $4, $6);
+	}
+BVS:
+	INSTR_NUM bvs '[' Id ']' DEFER {
+		$$ = new instr::bvs($1, $4, $6);
+	}
+BR:
+	INSTR_NUM br '[' Id ']' DEFER {
+		$$ = new instr::br($1, $4, $6);
+	}
+DBL_SHF:
+	INSTR_NUM dbl_shf '[' DST ',' SRC ',' SRC ',' SHIFT ']' GPR_WRBOTH {
+		$$ = new instr::dbl_shf($1, $4, $6, $8, $10, $12);
+	}
+IMMED:
+	INSTR_NUM immed '[' DST ',' CONSTANT OPT_SHIFT ']' GPR_WRBOTH {
+		$$ = new instr::immed($1, $4, $6, $7, $9);
+	}
+IMMED_W1:
+	INSTR_NUM immed_w1 '[' Gpr ',' CONSTANT ']' GPR_WRBOTH {
+		$$ = new instr::immed_w1($1, $4, $6, $8);
+	}
+LD_FIELD:
+	INSTR_NUM ld_field '[' DST ',' Mask ',' SRC OPT_SHIFT']' GPR_WRBOTH {
+		$$ = new instr::ld_field($1, $4, $6, $8, $9, $11);
+	}
+LD_FIELD_W_CLR:
+	INSTR_NUM ld_field_w_clr '[' DST ',' Mask ',' SRC OPT_SHIFT']' GPR_WRBOTH {
+		$$ = new instr::ld_field_w_clr($1, $4, $6, $8, $9, $11);
+	}
+LOCAL_CSR_WR:
+	INSTR_NUM local_csr_wr '[' Local_csr ',' SRC ']' {
+		$$ = new instr::local_csr_wr($1, $4, $6);
+	}
+MEM_READ:
+	INSTR_NUM mem '[' Mem_read_op ',' XFER_IN ',' SRC ',' SRC ',' INT ']' CTX_SWAP {
+		$$ = new instr::mem_read_local($1, $4, $6, $8, $10, $12, false, $14);
+	}
+	| INSTR_NUM mem '[' Mem_read_op ',' XFER_IN ',' SRC ',' SHIFT ',' SRC ',' INT ']' CTX_SWAP {
+		$$ = new instr::mem_read_remote($1, $4, $6, $8, $10, $12, nullptr, $14, false, $16);
+	}
+	| INSTR_NUM mem '[' Mem_read_op ',' XFER_IN ',' SRC ',' SRC ',' SHIFT ',' INT ']' CTX_SWAP {
+		$$ = new instr::mem_read_remote($1, $4, $6, $8, nullptr, $10, $12, $14, false, $16);
+	}
+	| INSTR_NUM mem '[' Mem_read_op ',' XFER_IN ',' SRC ',' SRC ',' INT ']' ',' indirect_ref CTX_SWAP {
+		$$ = new instr::mem_read_local($1, $4, $6, $8, $10, $12, true, $16);
+	}
+	| INSTR_NUM mem '[' Mem_read_op ',' XFER_IN ',' SRC ',' SHIFT ',' SRC ',' INT ']' ',' indirect_ref CTX_SWAP {
+		$$ = new instr::mem_read_remote($1, $4, $6, $8, $10, $12, nullptr, $14, true, $18);
+	}
+	| INSTR_NUM mem '[' Mem_read_op ',' XFER_IN ',' SRC ',' SRC ',' SHIFT ',' INT ']' ',' indirect_ref CTX_SWAP {
+		$$ = new instr::mem_read_remote($1, $4, $6, $8, nullptr, $10, $12, $14, true, $18);
+	}
+MEM_WRITE:
+	INSTR_NUM mem '[' Mem_write_op ',' XFER_OUT ',' SRC ',' SRC ',' INT ']' CTX_SWAP {
+		$$ = new instr::mem_write_local($1, $4, $6, $8, $10, $12, false, $14);
+	}
+	| INSTR_NUM mem '[' Mem_write_op ',' XFER_OUT ',' SRC ',' SHIFT ',' SRC ',' INT ']' CTX_SWAP {
+		$$ = new instr::mem_write_remote($1, $4, $6, $8, $10, $12, nullptr, $14, false, $16);
+	}
+	| INSTR_NUM mem '[' Mem_write_op ',' XFER_OUT ',' SRC ',' SRC ',' SHIFT ',' INT ']' CTX_SWAP {
+		$$ = new instr::mem_write_remote($1, $4, $6, $8, nullptr, $10, $12, $14, false, $16);
+	}
+	| INSTR_NUM mem '[' Mem_write_op ',' XFER_OUT ',' SRC ',' SRC ',' INT ']' ',' indirect_ref CTX_SWAP {
+		$$ = new instr::mem_write_local($1, $4, $6, $8, $10, $12, true, $16);
+	}
+	| INSTR_NUM mem '[' Mem_write_op ',' XFER_OUT ',' SRC ',' SHIFT ',' SRC ',' INT ']' ',' indirect_ref CTX_SWAP {
+		$$ = new instr::mem_write_remote($1, $4, $6, $8, $10, $12, nullptr, $14, true, $18);
+	}
+	| INSTR_NUM mem '[' Mem_write_op ',' XFER_OUT ',' SRC ',' SRC ',' SHIFT ',' INT ']' ',' indirect_ref CTX_SWAP {
+		$$ = new instr::mem_write_remote($1, $4, $6, $8, nullptr, $10, $12, $14, true, $18);
+	}
+MUL_STEP:
+	INSTR_NUM mul_step '[' Gpr ',' Gpr ']' ',' Mul_step_tok {
+		$$ = new instr::mul_step($1, $4, $6, $9);
+	}
+	| INSTR_NUM mul_step '[' Gpr ',' CONSTANT ']' ',' Mul_step_tok {
+		$$ = new instr::mul_step($1, $4, $6, $9);
+	}
+	| INSTR_NUM mul_step '[' CONSTANT ',' Gpr ']' ',' Mul_step_tok {
+		$$ = new instr::mul_step($1, $4, $6, $9);
+	}
+	| INSTR_NUM mul_step '[' CONSTANT ',' CONSTANT ']' ',' Mul_step_tok {
+		$$ = new instr::mul_step($1, $4, $6, $9);
+	}
+	| INSTR_NUM mul_step '[' Gpr ',' Omitted ']' ',' Mul_step_last_tok GPR_WRBOTH {
+		$$ = new instr::mul_step_last($1, $4, $9, $10);
+		delete $6;
+	}
+	| INSTR_NUM mul_step '[' Omitted ',' Omitted ']' ',' Mul_step_last_tok GPR_WRBOTH {
+		$$ = new instr::mul_step_last($1, $4, $9, $10);
+		delete $6;
+	}
+NOP:
+	INSTR_NUM nop {
+		$$ = new instr::nop($1);
+	}
+DST:
+	Gpr {$$ = $1;} | Indexed {$$ = $1;} | XFER_OUT {$$ = $1;} | Omitted {$$ = $1;}
+SRC:
+	Gpr {$$ = $1;} | Indexed {$$ = $1;} | XFER_IN {$$ = $1;} | CONSTANT {$$ = $1;} | Omitted {$$ = $1;}
+XFER_IN:
+	Xfer {
+		$$ = new instr::xfer_in($1);
+	}
+XFER_OUT:
+	Xfer {
+		$$ = new instr::xfer_out($1);
+	}
+CONSTANT:
+	INT {
+		$$ = new instr::constant($1);
+	}
+OPT_SHIFT:
+	',' SHIFT {
+		$$ = $2;
+	}
+	| {
+		$$ = nullptr;
+	}
+SHIFT:
+	Shift {$$ = $1;} | ShiftARight {$$ = $1;}
+GPR_WRBOTH:
+	',' gpr_wrboth {
+		$$ = true;
+	}
+	| {
+		$$ = false;
+	}
+DEFER:
+	',' defer '[' INT ']' {
+		$$ = $4;
+	}
+	| {
+		$$ = 0;
+	}
+CTX_SWAP:
+	',' ctx_swap INT ']' {
+		$$ = $3;
+	}
+	| {
+		$$ = -1;
+	}
+INSTR_NUM:
+	Addr Id {
+		$$ = $2;
+	}
+	| Id {
+		$$ = $1;
+	}
+INT:
+	UInt | HexInt | Mask
+%%

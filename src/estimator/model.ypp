@@ -1,0 +1,225 @@
+%define api.prefix {model_} 
+%define api.pure full
+%param { yyscan_t scanner }
+
+%code requires {
+	#include <tuple>
+	#include <cstdint>
+	#include <string>
+	#include <cstdint>
+	#include <err.h>
+
+	typedef void* yyscan_t;
+}
+
+%code provides {
+	#ifdef YYSTYPE
+	#undef YYSTYPE
+	#endif
+	#define YYSTYPE MODEL_STYPE
+	#ifdef YY_DECL
+	#undef YY_DECL
+	#endif
+	#define YY_DECL int model_lex(MODEL_STYPE* yylval_param, yyscan_t yyscanner)
+	YY_DECL;
+
+	template<class T>
+	struct model_list {
+		T* next;
+
+		model_list(T* next) : next(next) {}
+		~model_list() {
+			if (this->next)
+				delete this->next;
+		}
+	};
+
+	struct model_kv;
+	struct model_kv : public model_list<model_kv> {
+		uint64_t key;
+		uint64_t value;
+		model_kv(model_kv* next, uint64_t key, uint64_t value)
+			: model_list(next),
+			  key(key),
+			  value(value) {}
+	};
+
+	struct model_fun;
+	struct model_fun : public model_list<model_fun> {
+		std::string name;
+		enum type_t {
+			BV,
+			ARRAY_FUN,
+			FUN,
+		};
+		template<enum type_t T> struct t {};
+		type_t type;
+
+		union {
+			uint64_t bv;
+			std::string fun;
+			model_kv* kv;
+		};
+
+		model_fun(t<type_t::BV>, model_fun* next, std::string name, uint64_t bv)
+			: model_list(next),
+			  name(name),
+			  type(type_t::BV),
+			  bv(bv) {}
+		model_fun(t<type_t::ARRAY_FUN>, struct model_fun* next, std::string name, std::string fun)
+			: model_list(next),
+			  name(name),
+			  type(type_t::ARRAY_FUN),
+			  fun(fun) {}
+		model_fun(t<type_t::FUN>, struct model_fun* next, std::string name, model_kv* kv)
+			: model_list(next),
+			  name(name),
+			  type(type_t::FUN),
+			  kv(kv) {}
+		~model_fun() {
+			switch (type) {
+			case BV:
+				break;
+			case ARRAY_FUN:
+				break;
+			case FUN:
+				if (kv)
+					delete kv;
+				break;
+			}
+		}
+	};
+}
+
+%parse-param {model_fun **out} {std::string& in}
+
+%define parse.error verbose
+
+%start S
+
+%token model
+%token define_fun
+%token bitvec
+%token bool_
+%token array
+%token as_array
+%token as_const32x0
+%token ite
+%token eq
+%token unspecified
+%token BV
+%token Boolean
+%token Number
+%token Name
+
+%union {
+	uint64_t uint64;
+	char* str;
+	struct model_fun* fun;
+	struct model_kv* kv_list;
+}
+
+%code {
+	int model_error(void* scanner, void* out, std::string& in, const char* msg) {
+		errx(-1, "z3-model parser '%s': %s", in.c_str(), msg);
+	}
+
+	template<enum model_fun::type_t T>
+	using t = struct model_fun::t<T>;
+	using e = model_fun::type_t;
+}
+
+%type<uint64> BV Number
+%type<str> Name FUNBV FUNBOOL FUNA FUNF AS_ARRAY
+%type<fun> S LIST
+%type<kv_list> KV_LIST
+
+%%
+S:
+	model ')' {
+		*out = nullptr;
+	}
+	| model LIST ')' {
+		*out = $2;
+	}
+	| '(' ')' {
+		*out = nullptr;
+	}
+	| '(' LIST ')' {
+		*out = $2;
+	}
+LIST:
+	FUNBV BV ')' {
+		$$ = new model_fun(t<e::BV>{}, nullptr, $1, $2);
+		free($1);
+	}
+	| LIST FUNBV BV ')' {
+		$$ = new model_fun(t<e::BV>{}, $1, $2, $3);
+		free($2);
+	}
+	| FUNBOOL Boolean ')' {
+		$$ = nullptr;
+		free($1);
+	}
+	| LIST FUNBOOL Boolean ')' {
+		$$ = $1;
+		free($2);
+	}
+	| FUNA AS_ARRAY ')' {
+		$$ = new model_fun(t<e::ARRAY_FUN>{}, nullptr, $1, $2);
+		free($1);
+		free($2);
+	}
+	| LIST FUNA AS_ARRAY ')' {
+		$$ = new model_fun(t<e::ARRAY_FUN>{}, $1, $2, $3);
+		free($2);
+		free($3);
+	}
+	| FUNA as_const32x0 ')' {
+		$$ = nullptr;
+		free($1);
+	}
+	| LIST FUNA as_const32x0 ')' {
+		$$ = $1;
+		free($2);
+	}
+	| FUNF KV_LIST ')' {
+		$$ = new model_fun(t<e::FUN>{}, nullptr, $1, $2);
+		free($1);
+	}
+	| LIST FUNF KV_LIST ')' {
+		$$ = new model_fun(t<e::FUN>{}, $1, $2, $3);
+		free($2);
+	}
+FUNBV:
+	define_fun Name '(' ')' bitvec {
+		$$ = $2;
+	}
+FUNBOOL:
+	define_fun Name '(' ')' bool_ {
+		$$ = $2;
+	}
+ARRAY:
+	array bitvec bitvec ')'
+FUNA:
+	define_fun Name '(' ')' ARRAY {
+		$$ = $2;
+	}
+AS_ARRAY:
+	as_array Name ')' {
+		$$ = $2;
+	}
+FUNF:
+	define_fun Name '(' '(' Name  bitvec')' ')' bitvec {
+		$$ = $2;
+		free($5);
+	}
+KV_LIST:
+	ite eq Name BV ')' BV  KV_LIST ')' {
+		$$ = new model_kv($7,$4,$6);
+		free($3);
+	}
+	| unspecified {
+		$$ = nullptr;
+	}
+%%

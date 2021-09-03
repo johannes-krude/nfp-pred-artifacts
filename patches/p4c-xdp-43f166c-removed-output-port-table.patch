@@ -1,0 +1,84 @@
+From b560ff7590d2b805a7aa4c5295c736bd3b26fcb2 Mon Sep 17 00:00:00 2001
+From: Johannes Krude <johannes.krude@comsys.rwth-aachen.de>
+Date: Thu, 9 Jul 2020 16:59:34 +0200
+Subject: [PATCH 203/203] removed output port table
+
+---
+ xdpProgram.cpp | 50 --------------------------------------------------
+ 1 file changed, 50 deletions(-)
+
+diff --git a/xdpProgram.cpp b/xdpProgram.cpp
+index 06d22a5..f9f15fe 100644
+--- a/xdpProgram.cpp
++++ b/xdpProgram.cpp
+@@ -174,52 +174,10 @@ void XDPProgram::emitC(EBPF::CodeBuilder* builder, cstring headerFile) {
+                 "    return csum_fold(csum32_add(tmp, to));\n"
+         "}\n");
+ 
+-    builder->appendLine(
+-        "struct bpf_elf_map SEC(\"maps\") perf_event = {\n"
+-        "   .type = BPF_MAP_TYPE_PERF_EVENT_ARRAY,\n"
+-        "   .size_key = sizeof(u32),\n"
+-        "   .size_value = sizeof(u32),\n"
+-        "   .pinning = 1,\n"
+-        "   .max_elem = 2,\n"
+-        "};\n"
+-        "#define BPF_PERF_EVENT_OUTPUT() do {\\\n"
+-        "    int pktsize = (int)(skb->data_end - skb->data);\\\n"
+-        "    bpf_perf_event_output(skb, &perf_event, ((u64)pktsize << 32), &pktsize, 4);\\\n"
+-        "} while(0);\n");
+-
+     builder->appendLine(
+         "#define BPF_KTIME_GET_NS() ({\\\n"
+         "   u32 ___ts = (u32)bpf_ktime_get_ns(); ___ts; })\\\n");
+ 
+-    // The table used for forwarding: we write the output in it
+-    // TODO: this should use target->emitTableDecl().
+-    // We can't do it today because it has a different map type PERCPU_ARRAY
+-    builder->emitIndent();
+-    builder->appendFormat("struct bpf_elf_map SEC(\"maps\") %s = ", outTableName.c_str());
+-    builder->blockStart();
+-    builder->emitIndent();
+-    builder->append(".type = ");
+-    builder->appendLine("BPF_MAP_TYPE_PERCPU_ARRAY,");
+-
+-    builder->emitIndent();
+-    builder->append(".size_key = sizeof(u32),");
+-    builder->newline();
+-
+-    builder->emitIndent();
+-    builder->appendFormat(".size_value = sizeof(u32),");
+-    builder->newline();
+-
+-    builder->emitIndent();
+-    builder->appendFormat(".pinning = 2, /* PIN_OBJECT_NS */");
+-    builder->newline();
+-
+-    builder->emitIndent();
+-    builder->appendFormat(".max_elem = 1 /* No multicast support */");
+-    builder->newline();
+-
+-    builder->blockEnd(false);
+-    builder->endOfStatement(true);
+-
+     builder->newline();
+     builder->emitIndent();
+     builder->target->emitCodeSection(builder, functionName);
+@@ -245,14 +203,6 @@ void XDPProgram::emitC(EBPF::CodeBuilder* builder, cstring headerFile) {
+     builder->append(endLabel);
+     builder->appendLine(":");
+ 
+-    // write output port to a table
+-    builder->emitIndent();
+-    builder->appendFormat("bpf_map_update_elem(&%s, &%s, &%s.%s, BPF_ANY)",
+-                          outTableName.c_str(), zeroKey.c_str(),
+-                          getSwitch()->outputMeta->name.name,
+-                          XDPModel::instance.outputMetadataModel.outputPort.str());
+-    builder->endOfStatement(true);
+-
+     builder->emitIndent();
+     builder->appendFormat("return %s.%s",
+                           getSwitch()->outputMeta->name.name,
+-- 
+2.25.1
+

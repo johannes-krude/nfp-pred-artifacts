@@ -1,0 +1,80 @@
+%define api.prefix {unsat_core_} 
+%define api.pure full
+%param { yyscan_t scanner }
+
+%code requires {
+	#include <tuple>
+	#include <cstdint>
+	typedef void* yyscan_t;
+}
+
+%code provides {
+	#ifdef YYSTYPE
+	#undef YYSTYPE
+	#endif
+	#define YYSTYPE UNSAT_CORE_STYPE
+	#ifdef YY_DECL
+	#undef YY_DECL
+	#endif
+	#define YY_DECL int unsat_core_lex(UNSAT_CORE_STYPE* yylval_param, yyscan_t yyscanner)
+	YY_DECL;
+
+	struct unsat_core_list {
+		struct unsat_core_list* next;
+		std::string id;
+
+		unsat_core_list(struct unsat_core_list* next, std::string id) : next(next), id(id) {}
+		~unsat_core_list() {
+			if (this->next)
+				delete this->next;
+		}
+	};
+}
+
+%{
+
+#include <string>
+#include <cstdint>
+
+#include <err.h>
+
+int unsat_core_error(void* scanner, void* out, std::string& in, const char* msg){
+	errx(-1, "z3-unsat_core parser '%s': %s", in.c_str(), msg);
+}
+
+%}
+
+%parse-param {unsat_core_list **out} {std::string& in}
+
+%define parse.error verbose
+
+%start S
+
+%token Id
+
+%union {
+	char* str;
+	struct unsat_core_list* list;
+}
+
+%type<list> S LIST
+%type<str>  Id
+
+%%
+S:
+	'(' ')' {
+		*out = nullptr;
+	}
+	| '(' LIST ')' {
+		*out = $2;
+	}
+LIST:
+	Id {
+		$$ = new unsat_core_list(nullptr, $1);
+		free($1);
+	}
+	| LIST Id {
+		$$ = new unsat_core_list($1, $2);
+		free($2);
+	}
+%%

@@ -1,0 +1,320 @@
+#!/usr/bin/ruby
+
+require "etc"
+
+class PktGenCTL
+
+	def initialize(threads)
+		@threads = threads
+		@dir = Pathname.new("/proc/net/pktgen")
+		@cctl = @dir+"pgctrl"
+		@tctls = threads.times.map { |t| @dir+"kpktgend_#{t}" }
+		@ictls = []
+		unless @cctl.exist?
+			STDERR.puts "no pktgen found"
+			exit -1
+		end
+		unless @tctls.all? { |t| t.exist? }
+			STDERR.puts "too many threads"
+			exit -1
+		end
+	end
+
+	def cmd(ctl, *args)
+		unless ctl.writable?
+			STDERR.puts "insufficient permissions"
+			exit -1
+		end
+		cmd = args.join(" ")
+		begin
+			ctl.write("#{cmd}\n")
+		rescue Errno::EINVAL
+			STDERR.puts "invalid command: #{cmd}"
+			#exit -1
+		end
+		result = (ctl.read.split("\n").find { |l| /\AResult: / =~ l } || "Result: OK")[8..-1]
+		if result[0..1] != "OK"
+			STDERR.puts result
+			#exit -1
+		end
+	end
+
+	def ccmd(*args)
+		cmd(@cctl, *args)
+	end
+
+	def tcmd(*args)
+		@tctls.each_with_index do |t, i|
+			cmd(t, *if block_given?
+				yield(i)
+			else
+				args
+			end)
+		end
+	end
+
+	def icmd(*args)
+		if @ictls.empty?
+			STDERR.puts "no interface added"
+			exit -1
+		end
+		@ictls.each_with_index do |f, i|
+			cmd(f, *if block_given?
+				yield(i)
+			else
+				args
+			end)
+		end
+	end
+
+	def status
+		([@cctl]+@tctls+@ictls).map(&:read).join
+	end
+
+	def reset
+		ccmd(:reset)
+	end
+
+	def start
+		begin
+			ccmd(:start)
+		rescue Interrupt
+		end
+	end
+
+	def stop
+		ccmd(:stop)
+	end
+
+	def add_device(ifaces)
+		ifaces = [ifaces].flatten
+		begin
+			tcmd { |i| [:add_device, "#{ifaces[i % ifaces.size]}@#{i/ifaces.size}"] }
+		rescue Errno::ENODEV
+			STDERR.puts "no such interface"
+			exit -1
+		end
+		@ictls += @threads.times.map { |i| @dir+"#{ifaces[i % ifaces.size]}@#{i/ifaces.size}" }
+	end
+
+	def count=(x)
+		icmd(:count, x)
+	end
+
+	def ratep=(x)
+		icmd(:ratep, x/@threads)
+	end
+
+	def pkt_size=(x)
+		icmd(:pkt_size, x)
+	end
+
+	def clone_skb=(x)
+		icmd(:clone_skb, x)
+	end
+
+	def src_mac=(r)
+		case r
+		when String
+			icmd(:src_mac, r)
+		when Array
+			icmd { |i| [:src_mac, r[i % r.size]] }
+		else raise NotImplementedError
+		end
+	end
+
+	def src=(r)
+		case r
+		when String
+			icmd(:src_min, r)
+			icmd(:src_max, r)
+		when Range
+			icmd(:src_min, r.first)
+			icmd(:src_max, r.last)
+		else raise NotImplementedError
+		end
+	end
+
+	def udp_src=(r)
+		case r
+		when Integer
+			icmd(:udp_src_min, r)
+			icmd(:udp_src_max, r)
+		when Range
+			icmd(:udp_src_min, r.first)
+			icmd(:udp_src_max, r.last)
+		else raise NotImplementedError
+		end
+	end
+
+	def dst_mac=(r)
+		case r
+		when String
+			icmd(:dst_mac, r)
+		when Array
+			icmd { |i| [:dst_mac, r[i % r.size]] }
+		else raise NotImplementedError
+		end
+	end
+
+	def dst=(r)
+		case r
+		when String
+			icmd(:dst, r)
+			icmd(:dst, r)
+		when Range
+			icmd(:dst_min, r.first)
+			icmd(:dst_max, r.last)
+		else raise NotImplementedError
+		end
+	end
+
+	def udp_dst=(r)
+		case r
+		when Integer
+			icmd(:udp_dst_min, r)
+			icmd(:udp_dst_max, r)
+		when Range
+			icmd(:udp_dst_min, r.first)
+			icmd(:udp_dst_max, r.last)
+		else raise NotImplementedError
+		end
+	end
+
+	def src_split
+		icmd do |i|
+			["src_min", "#{256/@threads*i}.0.0.0"]
+		end
+		icmd do |i|
+			["src_max", "#{256/@threads*(i+1)-1}.255.255.255"]
+		end
+	end
+
+	def src_split3
+		icmd do |i|
+			["src_min", "0.#{256/@threads*i}.0.0"]
+		end
+		icmd do |i|
+			["src_max", "0.#{256/@threads*(i+1)-1}.255.255"]
+		end
+	end
+
+	def flag(name)
+		icmd(:flag, name)
+	end
+
+	def istat(name)
+		@ictls.map(&:read).join("\n").split(/[\n\t]|  /).select do |s|
+			s.include?(name)
+		end.map do |s|
+			s.split(": ", 2)[1].to_i
+		end.inject(0, &:+)
+	end
+
+	def pkts_sofar
+		istat("pkts-sofar")
+	end
+
+end
+
+require "trollop"
+require "pathname"
+
+nproc = Pathname.new("/proc/stat").read.split("\n").select do |l|
+	l =~ /\Acpu[0-9]+ /
+end.size
+
+opts = Trollop::options do
+	banner "usage: #{$0} [options] <cmd>"
+	banner "options:"
+	opt :iface, "select network inferface", default: nil, type: String
+	opt :threads, "select number of kernel threads", default: nproc 
+	opt :reset, "only reset pktgen"
+	opt :status, "print status before terminating"
+	opt :fsize, "frame size", default: 42
+	opt :ratep, "packet ratep", default: nil, type: Integer
+	opt :clone_skb, "clone_skb", default: nil, type: Integer
+	opt :src_mac, "src mac addr", default: nil, type: String
+	opt :src_macs, "multiple src mac addr", default: nil, type: String
+	opt :src, "src addr", default: nil, type: String
+	opt :udp_src, "udp src port", default: nil, type: String
+	opt :src_min, "src addr min value", default: nil, type: String
+	opt :src_max, "src addr max value", default: nil, type: String
+	opt :udp_src_min, "udp src port min value", default: nil, type: Integer
+	opt :udp_src_max, "udp src port max value", default: nil, type: Integer
+	opt :dst_mac, "dst mac addr", default: nil, type: String
+	opt :dst_macs, "multiple dst mac addr", default: nil, type: String
+	opt :dst, "dst addr", default: nil, type: String
+	opt :udp_dst, "udp dst port", default: nil, type: String
+	opt :dst_min, "dst addr min value", default: nil, type: String
+	opt :dst_max, "dst addr max value", default: nil, type: String
+	opt :udp_dst_min, "udp dst port min value", default: nil, type: Integer
+	opt :udp_dst_max, "udp dst port max value", default: nil, type: Integer
+	opt :src_split, "split src addresses between queues", default: false
+	opt :src_split3, "split src addresses between queues", default: false
+	opt :up, "wait until iface comes up"
+end
+
+Trollop::die "invalid number of arguments" unless ARGV.size == 0
+
+if opts[:up]
+	sleep 0.1 until `ip link show dev #{opts[:iface]}`.include?("DOWN")
+	sleep 0.1 while `ip link show dev #{opts[:iface]}`.include?("DOWN")
+end
+
+ctl = PktGenCTL.new(opts[:threads])
+
+ctl.reset
+exit if opts[:reset]
+Trollop::die "no interface given" unless opts[:iface]
+ctl.add_device(opts[:iface].split(","))
+ctl.count = 0
+ctl.clone_skb = opts[:clone_skb] if opts[:clone_skb]
+ctl.pkt_size = opts[:fsize]
+ctl.ratep = opts[:ratep] if opts[:ratep]
+ctl.flag "QUEUE_MAP_CPU"
+ctl.flag "NO_TIMESTAMP"
+if opts[:src_mac]
+	ctl.src_mac = opts[:src_mac] 
+end
+if opts[:src_macs]
+	ctl.src_mac = opts[:src_macs].split(",")
+end
+if opts[:src]
+	ctl.src = opts[:src] 
+elsif opts[:src_min] && opts[:src_max]
+	ctl.src = (opts[:src_min]..opts[:src_max])
+end
+if opts[:udp_src]
+	ctl.udp_src = opts[:udp_src].to_i 
+elsif opts[:udp_src_min] && opts[:udp_src_max]
+	ctl.udp_src = (opts[:udp_src_min]..opts[:udp_src_max])
+end
+if opts[:dst_mac]
+	ctl.dst_mac = opts[:dst_mac] 
+end
+if opts[:dst_macs]
+	ctl.dst_mac = opts[:dst_macs].split(",")
+end
+if opts[:dst]
+	ctl.dst = opts[:dst] 
+elsif opts[:dst_min] && opts[:dst_max]
+	ctl.dst = (opts[:dst_min]..opts[:dst_max])
+end
+if opts[:udp_dst]
+	ctl.udp_dst = opts[:udp_dst].to_i 
+elsif opts[:udp_dst_min] && opts[:udp_dst_max]
+	ctl.udp_dst = (opts[:udp_dst_min]..opts[:udp_dst_max])
+end
+if opts[:src_split]
+	ctl.src_split
+end
+if opts[:src_split3]
+	ctl.src_split3
+end
+while ctl.pkts_sofar == 0
+	ctl.start
+end
+puts ctl.status if opts[:status]
+ctl.reset
+
