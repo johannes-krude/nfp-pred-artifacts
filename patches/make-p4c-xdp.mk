@@ -20,7 +20,7 @@ $(BUILD_DIR)/p4c/extensions/p4c-xdp: $(BUILD_DIR)/p4c $(BUILD_DIR)/p4c/backends/
 	mv $@.tmp $@
 
 $(BUILD_DIR)/p4c/backends/ebpf/runtime/contrib/libbpf: $(BUILD_DIR)/p4c
-	cd $(BUILD_DIR)/p4c/backends/ebpf; python ./build_libbpf
+	cd $(BUILD_DIR)/p4c/backends/ebpf; python3 ./build_libbpf
 
 $(BUILD_DIR)/p4c:
 	@mkdir -p $(@D)

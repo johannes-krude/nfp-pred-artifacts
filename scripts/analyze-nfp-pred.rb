@@ -1046,7 +1046,7 @@ gen "xdp-" do
 end
 
 run do
-	$num_ereports = 20
+	$num_ereports = 6
 end
 
 data "xdp-quic-lb", {

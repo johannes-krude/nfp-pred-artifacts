@@ -43,5 +43,5 @@ measure xdp-wpi-workaround lookup4 00:15:4d:13:12:9a,00:15:4d:13:12:9b 10 510000
 measure xdp-wpi lookup8 00:15:4d:13:12:9a,00:15:4d:13:12:9b
 measure xdp-wpi lookup12 00:15:4d:13:12:9a,00:15:4d:13:12:9b
 
-#./tasks/nfp-load-firmware.rb -c inp5:nf-tools wpi10
+#./tasks/load-nfp-firmware.rb -c inp5:nf-tools wpi10
 measure xdp-wpi-series inc 00:15:4d:13:12:9a,00:15:4d:13:12:9b 9 20

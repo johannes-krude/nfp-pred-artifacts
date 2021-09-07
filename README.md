@@ -49,13 +49,13 @@ Since the modified nfp kernel driver does not work with newer kernels, do not in
 
 Please install the following packets on all computers.
 
-    apt-get install --no-install-recommends git build-essential libjudy-dev libpcap-dev ruby libtrollop-ruby binutils-dev libiberty-dev libelf-dev pbzip2 texinfo openssh-client bison flex libssl-dev z3 wget clang llvm python sudo linux-headers-generic gnuplot texlive-full
+    apt-get install --no-install-recommends git build-essential cmake libjudy-dev libpcap-dev ruby libtrollop-ruby binutils-dev libiberty-dev libelf-dev pbzip2 texinfo openssh-client bison flex libssl-dev z3 wget clang llvm libprotobuf-dev protobuf-compiler libtool libgc-dev libfl-dev libgmp-dev libboost-dev libboost-iostreams-dev libboost-graph-dev pkg-config python3 python3-scapy python3-ipaddr python3-ply python3-pip tcpdump sudo linux-headers-generic gnuplot texlive-full
 
 This repository needs to be cloned into the users home directory on each computer and the tools need to be compiled with the following command.
 
     make
 
-### Throughput measurement setup
+### Throughput Measurement Setup
 
 The throughput measurements require three computers: a computer which executes the BPF programs (host-rx), a computer which sends packets (host-tx) and a third computer (not shown in figure) which orchestrates the measurement and stores the resulting data.
 To overload host-rx with packets, a Barefoot Tofino based switch amplifies the number of packets through recirculation.
@@ -63,15 +63,15 @@ To overload host-rx with packets, a Barefoot Tofino based switch amplifies the n
 The following figure shows the connection of host-tx and host-rx to the switch.
 When using different switch port numbers or link speeds, changes need to be done in `scripts/accelerator.p4`, `scripts/accelerator_setup.py`, `tasks/measure-xdp-ereport.rb`, `tasks/measure-xdp-ereport-slow.rb`, `tasks/measure-xdp-ereport-workaround.rb`, and `tasks/measure-xdp-wpi-workaround.rb`.
 
-              +-------+  2 x 25 GbE  +----------+
-     host-tx  |  eth1 |--------------| Port 2/0 |
-              |  eth2 |--------------| Port 2/1 | Barefoot Tofino
-              +-------+              |          | based
-                                     |          | EdgeCore Wedge 100BF-32X
-     host-rx  +-------+              |          |
-       with   |  eth1 |--------------| Port 29  |
-    Netronome |  eth2 |--------------| Port 30  |
-    Agilio CX +-------+  2 x 40 GbE  +----------+
+              +-------+  2 x 25 GbE  +----------------+
+     host-tx  |  eth1 |--------------| Port 2/0 (140) |
+              |  eth2 |--------------| Port 23/0 (52) | Barefoot Tofino
+              +-------+              |                | based
+                                     |                | EdgeCore Wedge 100BF-32X
+     host-rx  +-------+              |                |
+       with   |  eth1 |--------------| Port 29 (144)  |
+    Netronome |  eth2 |--------------| Port 30 (152)  |
+    Agilio CX +-------+  2 x 40 GbE  +----------------+
      2x40 GbE
 
 Each computer needs a copy of this repository as described in the previous subsection.
@@ -91,7 +91,9 @@ The ability to execute remote commands can be tested with the following commands
 
 
 
-### Loading the NFP Kernel driver
+### Loading the NFP Kernel Driver
+
+Time: ~30 seconds
 
 We use a modified variant of the Netronome SmartNIC kernel driver, which exposes the SmartNICs DRAM as an BPF array.
 This driver is needed for all evaluation steps which use the Netronome SmartNIC.
@@ -131,7 +133,7 @@ Since all intermediate data is included in this repository (`data-paper/`), any 
 ### 1. Compiling BPF Example Programs to NFP Assembly
 
 - Required Hardware: 1 computer with Netronome Agilio CX (eth1), modified nfp driver, modified nic-firmware, sudo without password
-- Time: TODO
+- Executen time: ~11 minutes
 - Input: examples/*.c examples/*.p4 examples/*.sh
 - Output: data-repeated/programs/*.asm
 - Output: data-repeated/programs/*.bpf.o
@@ -145,7 +147,7 @@ When omitting this step, precompiled output resides in `data-paper/programs/`.
 ### 2. Predicting the Throughput of the Example Programs
 
 - Required Hardware: 1 computer (preferably Core i7-7700 with 16 GiB RAM)
-- Time: ~10 days
+- Execution Time: ~10 days
 - Input: data-{paper,repeated}/programs/*.asm
 - Output: data-repeated/predictions/*.ereport
 
@@ -170,6 +172,27 @@ The output in the `.ereport` files from this step is explained in the [tool desc
 When omitting this step, the predictions used in the paper reside in `data-paper/predictions/`.
 
 ### 3. Measuring the Throughput of the Example Programs
+
+- Required Hardware: The Full [throughput measurement setup](#throughput-measurement-setup)
+- Execution Time: TODO
+- Input: data-{paper,repeated}/predictions/*.ereport
+- Input: data-{paper,repeated}/programs/*.bpf.o
+- Output: data-repeated/measured-throughput/*.dat.tar
+- Output: data-repeated/measured-throughput/*.log.bz2
+
+This step measures the actually achievable throughput capacity of the program paths from the ereports.
+
+For this step, passwordless ssh and sudo to and on host-rx, the switch, and host-tx is needed as described in the [throughput measurement setup](#throughput-measurement-setup).
+When executing one of the following commands, please substitute the hostnames and users with the appropriate values from your setup.
+
+    ./3-measure-throughput.sh data-paper/programs data-paper/predictions user@host-rx:nfp-pred-artifacts user@switch:nfp-pred-artifacts user@host-tx:nfp-pred-artifacts
+
+You can instead use your own compiled programs or ereports by substituting one or both directories as shown below.
+
+    ./3-measure-throughput.sh data-repeated/programs data-repeated/predictions user@host-rx:nfp-pred-artifacts user@switch:nfp-pred-artifacts user@host-tx:nfp-pred-artifacts
+
+This step may cause kernel crashes on host-rx when switching between NIC firmwares.
+To continue the measurement after a reboot, please comment out the succesfull commands in `./scripts/estimate-asm.sh` and remember to reload the modified [NFP kernel driver](#Loading the NFP Kernel Driver).
 
 When omitting this step, the throughput measurements used in the paper reside in `data-paper/measured-throughput/`.
 

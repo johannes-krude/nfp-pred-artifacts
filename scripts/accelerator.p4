@@ -65,15 +65,15 @@ control Ingress(
 		size = 128;
 		const entries = {
 			0x00154d135dda : to_port(140); // inp1/1
-			0x00154d135ddb : to_port(141); // inp1/2
+			0x00154d135ddb : to_port(52); // inp1/2
 			0x00154d1379f0 : to_port(24);  // inp2/1
 			0x00154d1379f1 : to_port(8);   // inp2/2
 			0x00154d135f1e : to_port(24);  // inp3/1
 			0x00154d135f1f : to_port(8);   // inp3/2
-			//0x00154d1382b7 : to_port(136); // inp4/1
-			//0x00154d1382b8 : to_port(137); // inp4/2
-			0x00154d1382b7 : to_mcast(136);  // inp4/1
-			0x00154d1382b8 : to_mcast(137);  // inp4/2
+			//0x00154d1382b7 : to_port(141); // inp4/1
+			//0x00154d1382b8 : to_port(53); // inp4/2
+			0x00154d1382b7 : to_mcast(141);  // inp4/1
+			0x00154d1382b8 : to_mcast(53);  // inp4/2
 			//0x00154d13129a : to_port(144); // inp5/1
 			//0x00154d13129b : to_port(152); // inp2/2
 			0x00154d13129a : to_mcast(144);  // inp5/1

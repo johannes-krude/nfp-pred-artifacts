@@ -3,13 +3,12 @@
 RX=${1}
 BF=${2}
 TX=${3}
+LOGDIR="${LOGDIR:-"data/measured-throughput/"}"
 
 if [ -z "$RX" ] || [ -z "$BF" ] || [ -z "$TX" ]; then
-	echo "usage: <rx> <bf> <tx>" >&2
+	echo "usage: <rx> <bf> <tx> [logdir]" >&2
 	exit -1
 fi
-
-LOGDIR="data/"
 
 set -x
 set -e
@@ -19,7 +18,8 @@ function measure {
 }
 
 
-./tasks/nfp-load-firmware.rb -c inp5:nf-tools wpi1
+# loading the firmware may cause the kernel to crash
+./tasks/load-nfp-firmware.rb -c inp5:nf-tools wpi1
 
 measure xdp-ereport xdp-quic-lb.k 00:15:4d:13:12:9a,00:15:4d:13:12:9b
 measure xdp-ereport xdp-cloudflare.k 00:15:4d:13:12:9a,00:15:4d:13:12:9b
@@ -29,7 +29,8 @@ measure xdp-ereport xdp-alaw2ulaw.k 00:15:4d:13:12:9a,00:15:4d:13:12:9b
 measure xdp-ereport xdp-switch.k 00:15:4d:13:12:9a,00:15:4d:13:12:9b
 
 
-./tasks/nfp-load-firmware.rb -c inp5:nf-tools wpi10
+# loading the firmware may cause the kernel to crash
+./tasks/load-nfp-firmware.rb -c inp5:nf-tools wpi10
 
 measure xdp-ereport-slow 1333 xdp-dns-cache.k 00:15:4d:13:12:9a,00:15:4d:13:12:9b
 
