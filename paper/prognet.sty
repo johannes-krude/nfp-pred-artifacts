@@ -1,0 +1,90 @@
+
+\RequirePackage{xparse}
+\RequirePackage[nosfdefault]{comicneue}
+\RequirePackage{tikz}
+\usetikzlibrary{positioning}
+\usetikzlibrary{calc}
+\usetikzlibrary{intersections}
+
+\tikzset{font append/.style={font/.expand once=\tikz@textfont #1},
+	 font append/.value required}
+\makeatother
+
+\NewDocumentCommand{\annotation}{mO{left}mO{}O{}m}{%
+	\node[blue, align=center, font append=\comicneue\itshape, #4]%
+	     at #3%
+	     (annotation text) {#6};%
+	\path[blue, bend #2] (annotation text#5) edge[->] #1;%
+}
+
+\newcommand{\labelabove}[3][0.5em]{%
+	\node[above=#1 of #2.north,anchor=center,align=center,font=\scriptsize] {#3};
+}
+
+\newcommand{\labelbelow}[3][0.5em]{%
+	\node[below=#1 of #2.south,anchor=center,font=\scriptsize] {#3};
+}
+
+\newcommand{\netnode}[4][]{%
+	\node[anchor=north,#1] #2 %
+	{\includegraphics[#3]{#4}};%
+}
+
+\newcommand{\switch}[2][]{%
+	\netnode[#1]{#2}{height=0.4cm}{images/gigabit-layer-3-switch}%
+}
+
+\newcommand{\server}[2][]{%
+	\netnode[#1]{#2}{height=0.8cm}{images/server}%
+}
+
+\newcommand{\cloud}[2][]{%
+	\netnode[#1]{#2}{height=0.8cm}{images/cloud}%
+}
+
+\newcommand{\antenna}[2][]{%
+	\netnode[#1]{#2}{height=0.8cm}{images/antenna}%
+}
+
+\newcommand{\car}[2][]{%
+	\netnode[#1]{#2}{height=0.8cm}{images/jeep}%
+}
+
+\tikzset{link/.style={draw=black,line width=0.1em}}
+
+\newcommand{\link}[1][]{%
+	\path[link,#1]%
+}
+\newcommand{\linkflow}{%
+	edge node[above,sloped] {$\rightarrow$}
+}
+
+\newcommand{\nf}[2]{%
+	\node[anchor=south west] (nf_#1_#2) at ($(#1.north 
+	west)-(0.0em,0.5em)+(#2*1.5em,0)$) 
+	%
+	{\includegraphics[width=1.5em]{images/gear.pdf}};%
+}
+
+\newcounter{@flowlen}
+\newcommand{\flow}[2][]{%
+	\setcounter{@flowlen}{0}
+	\foreach \coord [count=\i] in #2 {
+		\coordinate [at=\coord, name=@flow@\i];
+		\coordinate [at=\coord, name=@flow@l];
+		\stepcounter{@flowlen}%
+	}
+	\foreach \i in {2,...,\value{@flowlen}} {
+		\pgfmathtruncatemacro{\p}{\i - 1}
+		\coordinate (@flow@b\p) at ($(@flow@\p)!0.5!(@flow@\i)$);
+	};
+	\addtocounter{@flowlen}{-1}
+	\path[#1] (@flow@1) -- (@flow@b1)
+	\ifnum \value{@flowlen}>1
+		\foreach \i in {2,...,\value{@flowlen}} {
+			.. controls (@flow@\i) .. (@flow@b\i)
+		}
+	\fi
+	-- (@flow@l);
+}
+
