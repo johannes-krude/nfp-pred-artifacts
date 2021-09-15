@@ -1,0 +1,48 @@
+From 11359e4ff599f7e196699e8ba280afddb52dca0b Mon Sep 17 00:00:00 2001
+From: Johannes Krude <johannes.krude@comsys.rwth-aachen.de>
+Date: Wed, 11 Mar 2020 15:32:32 +0100
+Subject: [PATCH 1/3] enable BPF flavor
+
+---
+ firmware/Makefile.apps     | 2 +-
+ firmware/apps/nic/Makefile | 4 +++-
+ 2 files changed, 4 insertions(+), 2 deletions(-)
+
+diff --git a/firmware/Makefile.apps b/firmware/Makefile.apps
+index c78b0ac..9834a66 100644
+--- a/firmware/Makefile.apps
++++ b/firmware/Makefile.apps
+@@ -6,7 +6,7 @@
+ # SPDX-License-Identifier: BSD-2-Clause
+ 
+ 
+-FLAVOR_LIST = nic sriov
++FLAVOR_LIST = nic sriov bpf
+ 
+ PLATFORM_LIST = Hydrogen Hydrogen_4x10 Lithium Beryllium Beryllium_4x10_1x40 \
+                 Beryllium_8x10 Carbon Carbon_2x10 Carbon_1x10_1x25 \
+diff --git a/firmware/apps/nic/Makefile b/firmware/apps/nic/Makefile
+index a690b87..c630d20 100644
+--- a/firmware/apps/nic/Makefile
++++ b/firmware/apps/nic/Makefile
+@@ -12,6 +12,8 @@ ifeq ($(FLAVOR), nic)
+     NS_FLAVOR_TYPE = 1
+ else ifeq ($(FLAVOR), sriov)
+     NS_FLAVOR_TYPE = 2
++else ifeq ($(FLAVOR), bpf)
++    NS_FLAVOR_TYPE = 3
+ endif
+ 
+ DEDUP=
+@@ -420,7 +422,7 @@ $(eval $(call nffw.add_obj_codeless,$(PROJECT),nfd_tlv_init))
+ # Link stage
+ # Write the build info and then the firmware ID to the MIP (one overrides the other in the MIP)
+ $(eval $(call nffw.add_link_flag,$(PROJECT),$(shell $(SCRIPT_DIR)/describe-head.sh --nfld_args $(FLAVOR))))
+-$(eval $(call nffw.add_rtsyms,$(PROJECT),$(shell $(SCRIPT_DIR)/describe-head.sh --fw_id $(FLAVOR))))
++$(eval $(call nffw.add_rtsyms,$(PROJECT),$(shell $(SCRIPT_DIR)/describe-head.sh --fw_id $(FLAVOR))wpi$(WORKERS_PER_ISLAND)))
+ # TODO get link_w_analysis to work without adding a warning
+ $(eval $(call nffw.add_link_flag,$(PROJECT),-codeshare $(APP_MASTER_ME) $(MAPCMSG_ME)))
+ $(eval $(call nffw.add_link_flag,$(PROJECT),-noecc)) # required for codeshare on B0
+-- 
+2.25.1
+

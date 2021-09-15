@@ -10,8 +10,8 @@ id = args[:id]
 rate = args[:rate].to_i
 repeat = args[:repeat].to_i
 
-ereport = [Pathname.new(prog), logdir / "../predictions/#{prog}.ereport"].select(&:exist?).first
-obj = ["", "../programs"].map { |d| ereport.dirname / d / ereport.basename.to_s.sub(/\.[a-z]\.ereport/, ".bpf.o") }.select(&:exist?).first
+ereport = [Pathname.new(prog), Pathname.new(prog+".ereport"), logdir / "../predictions/#{prog}.ereport"].select(&:exist?).first
+obj = ["", "../programs", "out/"].map { |d| ereport.dirname / d / ereport.basename.to_s.sub(/\.[a-z]\.ereport/, ".bpf.o") }.select(&:exist?).first
 
 date
 gitstatus

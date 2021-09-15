@@ -10,7 +10,7 @@ CXXFLAGS= -MD -std=gnu++17 -O0 -Ibuild -Isrc -Wall -Wextra -Wsuggest-override -W
 LDFLAGS= -L ./build -fuse-ld=gold -DGIT_VERSION='$(GIT_VERSION)' -DGIT_STATUS='$(GIT_STATUS)' -DCOMPILE_DATE=\"$(COMPILE_DATE)\"
 LDLIBS= 
 
-GIT_VERSION := "$(shell git show -s --oneline --no-abbrev-commit | sed "s/\([\\']\)/\\\\\\1/g")"
+GIT_VERSION := "$(shell git show -s --oneline --no-abbrev-commit | sed "s/\([\\']\)//g")"
 GIT_STATUS := "$(shell git status -s)"
 COMPILE_DATE := "$(shell date --rfc-3339=seconds)"
 

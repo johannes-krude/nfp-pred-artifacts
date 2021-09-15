@@ -13,7 +13,7 @@ heading() {
 
 heading "Compiling accelerator"
 
-/root/tools/p4_build.sh -p scripts/accelerator.p4
+p4_build.sh -p scripts/accelerator.p4
 
 
 heading "Killing old bf_switchd"
@@ -34,7 +34,7 @@ done
 
 heading "Setting up ports"
 
-/root/tools/run_pd_rpc.py scripts/accelerator_setup.py
+run_pd_rpc.py scripts/accelerator_setup.py
 
 heading "Starting controller"
 

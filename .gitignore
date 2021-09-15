@@ -1,8 +1,15 @@
 build/
+out/
+data-tmp/
 paper-repeated.pdf
 paper-small-eval-example.pdf
+.adcache
+paper/paper-nfp-pred.pdf
 .ssh
 .bash_history
 .wget-hsts
+.texlive2019
+.cache
 bf_drivers.log
+bf_drivers.log.*
 zlog-cfg-cur

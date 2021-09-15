@@ -1,0 +1,107 @@
+From 3263e327da9d0046a3496ce744c32e424a16d9a7 Mon Sep 17 00:00:00 2001
+From: Johannes Krude <johannes.krude@comsys.rwth-aachen.de>
+Date: Mon, 5 Oct 2020 13:14:54 +0200
+Subject: [PATCH 3/3] 1Gb Array in gprB_23
+
+---
+ firmware/apps/nic/ebpf.uc         | 14 ++++++++++----
+ firmware/apps/nic/maps/arrays.uc  | 23 +++++++++++++++++++++++
+ firmware/apps/nic/maps/hashmap.uc |  2 +-
+ 3 files changed, 34 insertions(+), 5 deletions(-)
+ create mode 100644 firmware/apps/nic/maps/arrays.uc
+
+diff --git a/firmware/apps/nic/ebpf.uc b/firmware/apps/nic/ebpf.uc
+index d0870bf..e3f4c12 100644
+--- a/firmware/apps/nic/ebpf.uc
++++ b/firmware/apps/nic/ebpf.uc
+@@ -32,6 +32,7 @@
+ 
+ #define EBPF_DEBUG
+ #define EBPF_MAPS
++#include "arrays.uc"
+ 
+ #ifdef EBPF_DEBUG
+     #define JOURNAL_ENABLE 1
+@@ -68,9 +69,9 @@
+ #endm
+ 
+ 
+-#macro ebpf_init_cap_maps(types, max_maps, max_elements, max_key_sz, max_val_sz, max_entry_sz)
+-    #define_eval __EBPF_CAP_DATA '__EBPF_CAP_DATA,NFP_BPF_CAP_TYPE_MAPS,24,(types),(max_maps),(max_elements),(max_key_sz),(max_val_sz),(max_entry_sz)'
+-    #define_eval __EBPF_CAP_LENGTH (__EBPF_CAP_LENGTH + 32)
++#macro ebpf_init_cap_maps(types, max_maps, max_elements, max_key_sz, max_val_sz, max_entry_sz, array_sz)
++    #define_eval __EBPF_CAP_DATA '__EBPF_CAP_DATA,NFP_BPF_CAP_TYPE_MAPS,32,(types),(max_maps),(max_elements),(max_key_sz),(max_val_sz),(max_entry_sz),(array_sz),(__ARRAY_DATA_0>>8)'
++    #define_eval __EBPF_CAP_LENGTH (__EBPF_CAP_LENGTH + 40)
+ #endm
+ 
+ 
+@@ -99,7 +100,7 @@ ebpf_init_cap_empty(NFP_BPF_CAP_TYPE_QUEUE_SELECT)
+ ebpf_init_cap_empty(NFP_BPF_CAP_TYPE_ADJUST_TAIL)
+ ebpf_init_cap_adjust_head(EBPF_CAP_ADJUST_HEAD_FLAG_NO_META, 44, 248, 84, 112)
+ ebpf_init_cap_maps(((1 << BPF_MAP_TYPE_HASH)+(1<<BPF_MAP_TYPE_ARRAY)), HASHMAP_MAX_TID_EBPF, HASHMAP_MAX_ENTRIES, HASHMAP_MAX_KEYS_SZ, HASHMAP_MAX_VALU_SZ, \
+-                   (HASHMAP_KEYS_VALU_SZ))
++                   (HASHMAP_KEYS_VALU_SZ), (ARRAY_SZ))
+ ebpf_init_cap_func(EBPF_CAP_FUNC_ID_LOOKUP, HTAB_MAP_LOOKUP_SUBROUTINE#)
+ ebpf_init_cap_finalize()
+ 
+@@ -176,10 +177,15 @@ ebpf_init_cap_finalize()
+ .begin
+     .reg jump_offset
+     .reg stack_addr
++    .reg array_addr
+ 
+     pv_save_meta_lm_ptr(_ebpf_pkt_vec)
+     load_addr[jump_offset, ebpf_start#]
+     alu[jump_offset, in_ustore_addr, -, jump_offset]
++    .reg_addr array_addr 23 B
++    immed[array_addr, ((__ARRAY_DATA_0>>8)&0x0000ffff)]
++    .reg_addr array_addr 23 B
++    immed_w1[array_addr, ((__ARRAY_DATA_0>>8)>>16)]
+     jump[jump_offset, ebpf_start#], targets[dummy0#, dummy1#], defer[3]
+         immed[stack_addr, EBPF_STACK_BASE]
+         .reg_addr stack_addr 22 A
+diff --git a/firmware/apps/nic/maps/arrays.uc b/firmware/apps/nic/maps/arrays.uc
+new file mode 100644
+index 0000000..f399090
+--- /dev/null
++++ b/firmware/apps/nic/maps/arrays.uc
+@@ -0,0 +1,23 @@
++
++#ifndef __ARRAYS_UC__
++#define __ARRAYS_UC__
++
++#define ARRAY_SZ (1<<30)
++
++/* bpf_map_type  from linux include/uapi/linux/bpf.h */
++#define BPF_MAP_TYPE_UNSPEC             0
++#define BPF_MAP_TYPE_HASH               1
++#define BPF_MAP_TYPE_ARRAY              2
++#define BPF_MAP_TYPE_PROG_ARRAY         3
++#define BPF_MAP_TYPE_PERF_EVENT_ARRAY   4
++#define BPF_MAP_TYPE_PERCPU_HASH        5
++#define BPF_MAP_TYPE_PERCPU_ARRAY       6
++#define BPF_MAP_TYPE_STACK_TRACE        7
++#define BPF_MAP_TYPE_CGROUP_ARRAY       8
++#define BPF_MAP_TYPE_LRU_HASH           9
++#define BPF_MAP_TYPE_LRU_PERCPU_HASH    10
++
++.alloc_mem __ARRAY_DATA_0 emem0 global ARRAY_SZ  256
++.init __ARRAY_DATA_0 0
++
++#endif
+diff --git a/firmware/apps/nic/maps/hashmap.uc b/firmware/apps/nic/maps/hashmap.uc
+index e16f3a5..b163a6f 100644
+--- a/firmware/apps/nic/maps/hashmap.uc
++++ b/firmware/apps/nic/maps/hashmap.uc
+@@ -86,7 +86,7 @@
+  */
+ 
+ #define HASHMAP_PARTITIONS              1
+-#define HASHMAP_TOTAL_ENTRIES           (1024<<12)
++#define HASHMAP_TOTAL_ENTRIES           (1024)//<<12)
+ #define HASHMAP_OVERFLOW_ENTRIES        (512<<14)
+ #define HASHMAP_MAX_ENTRIES             (1024*2000)
+ /* the first 1-127 tids are used by ebpf, and managed by cmsg_map.uc */
+-- 
+2.25.1
+

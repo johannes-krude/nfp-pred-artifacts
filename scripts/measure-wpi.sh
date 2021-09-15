@@ -9,7 +9,7 @@ if [ -z "$RX" ] || [ -z "$BF" ] || [ -z "$TX" ]; then
 	exit -1
 fi
 
-LOGDIR="data/"
+LOGDIR="${LOGDIR:-"data/measurements-section4/"}"
 
 set -x
 set -e

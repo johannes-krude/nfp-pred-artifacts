@@ -275,7 +275,11 @@ class Analyzer
 					end
 				end
 				if block && ["end", "}"].include?(keyword)
-					RuleDefEnv.new(self, src).instance_eval(src, rulesfile.to_s, block+1)
+					begin
+						RuleDefEnv.new(self, src).instance_eval(src, rulesfile.to_s, block+1)
+					rescue SyntaxError => e
+						@analyzer.die e.message
+					end
 					src = ""
 					block = nil
 				end
@@ -1076,11 +1080,12 @@ require "trollop"
 
 opts = Trollop::options do
 	banner "usage: #{$0} <ruleset> [target...]"
-	opt :datadir, "read data from directory", default: "data/"
-	opt :outdir, "write output to directory", default: "plot/"
+	opt :datadir, "read data from directory", default: ""
+	opt :outdir, "write output to directory", default: ""
+	opt :ruleset, "additional ruleset file", type: :string, multi: true
 	opt :time
-	opt :rule, "show rule result", type: :strings
-	opt :matches, "show matches", type: :strings
+	opt :rule, "show rule result", type: :strings, short: :r
+	opt :matches, "show matches", type: :strings, short: :m
 	opt :threads, "number of parallel threads", default: Etc.nprocessors
 end
 
@@ -1097,6 +1102,9 @@ begin
 	analyzer.datadir = Pathname.new(opts[:datadir])
 	analyzer.time = opts[:time]
 	analyzer.load(rulesfile)
+	opts[:ruleset].each do |r|
+		analyzer.load(Pathname.new(r))
+	end
 	analyzer.threads = opts[:threads] if opts[:threads] > 0
 
 	done = false

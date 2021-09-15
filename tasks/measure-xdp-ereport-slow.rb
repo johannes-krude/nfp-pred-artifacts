@@ -8,8 +8,8 @@ count = args[:count].to_i
 wait = args[:wait].to_f
 rx, bf, tx = connections (3)
 
-ereport = [Pathname.new(prog), logdir / "../predictions/#{prog}.ereport"].select(&:exist?).first
-obj = ["", "../programs"].map { |d| ereport.dirname / d / ereport.basename.to_s.sub(/\.[a-z]\.ereport/, ".bpf.o") }.select(&:exist?).first
+ereport = [Pathname.new(prog), Pathname.new(prog+".ereport"), logdir / "../predictions/#{prog}.ereport"].select(&:exist?).first
+obj = ["", "../programs", "out/"].map { |d| ereport.dirname / d / ereport.basename.to_s.sub(/\.[a-z]\.ereport/, ".bpf.o") }.select(&:exist?).first
 rx_obj = rx.upload([obj])
 
 date

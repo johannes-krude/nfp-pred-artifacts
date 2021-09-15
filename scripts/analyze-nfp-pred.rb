@@ -325,9 +325,39 @@ export ".dat", /\Aprogress-xdp-.*\.k\z/ do
 	rule :gnuplot_out
 end
 
+rule :achievements, "progress-xdp-" do
+	achievements = [[0.0,0.0]]
+
+	(rule :progress, data[:src]).each do |time, rate, count, count_|
+		round = rate.floor(-9)
+		if round > achievements[-1][0]
+			achievements << [round, time]
+		end
+
+		if count > 0
+			achievements << ["first", time]
+			break
+		end
+	end
+
+	achievements[1..-1]
+end
+
+rule :units, "progress-xdp-" do
+	{
+		"s" => (rule :achievements).map do |round, time|
+			["achieve.#{round}", time]
+		end
+	}
+end
+
+export ".tex", /\Aprogress-xdp-.*\.k\z/ do
+	rule :tex_units
+end
+
 gen "xdp-" do
 	data[:ereports].map do |k, n|
-		["progress-#{name}.#{k}", {src: "predictions/#{name}.#{k}.ereport"}]
+		["progress-#{name}.#{k}", {src: "#{data[:predictions_dir]||"."}/#{name}.#{k}.ereport"}]
 	end
 end
 
@@ -504,9 +534,10 @@ rule :units, "numbers-all" do
 	[:early,
 	 :first,
 	].each do |i|
-		max = numbers.map { |k,n| [k, n[:"#{i}_time"]] }.select(&:last).max_by { |k, (m,a,b)| b }
-		next unless max
-		time_all[:"#{i}_c99max"] = [max[0], max[1][2]]
+		c99max = numbers.map { |k,n| [k, n[:"#{i}_time"]] }.select(&:last).max_by { |k, (m,a,b)| b }
+		meanmax = numbers.map { |k,n| [k, n[:"#{i}_time"]] }.select(&:last).max_by { |k, (m,a,b)| m }
+		time_all[:"#{i}_c99max"] = [c99max[0], c99max[1][2]] if c99max
+		time_all[:"#{i}_meanmax"] = [meanmax[0], meanmax[1][0]] if meanmax
 	end
 
 	percent_all[:z3ratio_min] = numbers.map { |k,n| [k, n[:z3ratios].min] }.select(&:last).min_by(&:last)
@@ -530,7 +561,7 @@ end
 
 gen "xdp-" do
 	data[:ereports].map do |k, n|
-		["numbers-#{name}.#{k}", {srcs: ["predictions/#{name}.#{k}.ereport"] + (n-1).times.map { |i| "predictions/#{name}.#{k}-#{i+1}.ereport" } }]
+		["numbers-#{name}.#{k}", {srcs: ["#{data[:predictions_dir]||"."}/#{name}.#{k}.ereport"] + (n-1).times.map { |i| "#{data[:predictions_dir]||"."}/#{name}.#{k}-#{i+1}.ereport" } }]
 	end
 end
 
@@ -749,15 +780,15 @@ gather "compare-xdp-" do
 end
 
 rule :key_values, "rate-xdp-" do
-	list = rule :list_dat_tar, "measured-throughput/#{data[:measurement]}"
+	list = rule :list_dat_tar, "#{data[:measured_dir]||"."}/#{data[:measurement]}"
 	list += data[:workaround].keys if data[:workaround]
 	list.uniq
 	Hash[list.map do |id|
 		[id, if data[:workaround] && data[:workaround][id]
 			s, f = data[:workaround][id]
-			rule :dat_tar_filter_min, "measured-throughput/#{s}", f
+			rule :dat_tar_filter_min, "#{data[:measured_dir]||"."}/#{s}", f
 		else
-			rule :dat_tar, "measured-throughput/#{data[:measurement]}", id
+			rule :dat_tar, "#{data[:measured_dir]||"."}/#{data[:measurement]}", id
 		end]
 	end]
 end
@@ -1036,20 +1067,27 @@ end
 gen "xdp-" do
 	((data[:measurements]||{}).keys & (data[:ereports]||{}).keys) .map do |k|
 		["rate-#{name}.#{k}", {
-			ereport: "predictions/#{name}.#{k}.ereport",
+			ereport: "#{data[:predictions_dir]||"."}/#{name}.#{k}.ereport",
 			measurement: data[:measurements][k],
 		}.merge(
 		if data[:workarounds] && data[:workarounds][k] ;{
-			workaround: data[:workarounds][k]
+			workaround: data[:workarounds][k],
+		}; end || {}).merge(
+		if data[:measured_dir]; {
+			measured_dir: data[:measured_dir],
 		}; end || {})]
 	end
 end
 
 run do
-	$num_ereports = 6
+	$num_ereports = 20
+	$predictions_dir = "predictions/"
+	$measured_dir = "measured-throughput/"
 end
 
 data "xdp-quic-lb", {
+	predictions_dir: $predictions_dir,
+	measured_dir: $measured_dir,
 	ereports: {
 		k: $num_ereports,
 		i: $num_ereports,
@@ -1064,10 +1102,12 @@ data "xdp-quic-lb", {
 		"kFsat-strategy=incremental": $num_ereports,
 	},
 	measurements: {
-		k: "measure-xdp-ereport-xdp-quic-lb.l-00:15:4d:13:12:9a,00:15:4d:13:12:9b",
+		k: "measure-xdp-ereport-xdp-quic-lb.k-00:15:4d:13:12:9a,00:15:4d:13:12:9b",
 	}
 }
 data "xdp-quic-lb-ipv6-options", {
+	predictions_dir: $predictions_dir,
+	measured_dir: $measured_dir,
 	ereports: {
 		k: $num_ereports,
 		i: $num_ereports,
@@ -1082,10 +1122,12 @@ data "xdp-quic-lb-ipv6-options", {
 		"kFsat-strategy=incremental": $num_ereports,
 	},
 	measurements: {
-		k: "measure-xdp-ereport-xdp-quic-lb-ipv6-options.m-00:15:4d:13:12:9a,00:15:4d:13:12:9b",
+		k: "measure-xdp-ereport-xdp-quic-lb-ipv6-options.k-00:15:4d:13:12:9a,00:15:4d:13:12:9b",
 	}
 }
 data "xdp-cloudflare", {
+	predictions_dir: $predictions_dir,
+	measured_dir: $measured_dir,
 	ereports: {
 		k: $num_ereports,
 		i: $num_ereports,
@@ -1100,10 +1142,12 @@ data "xdp-cloudflare", {
 		"kFsat-strategy=incremental": $num_ereports,
 	},
 	measurements: {
-		k: "measure-xdp-ereport-xdp-cloudflare.l-00:15:4d:13:12:9a,00:15:4d:13:12:9b",
+		k: "measure-xdp-ereport-xdp-cloudflare.k-00:15:4d:13:12:9a,00:15:4d:13:12:9b",
 	}
 }
 data "xdp-switch", {
+	predictions_dir: $predictions_dir,
+	measured_dir: $measured_dir,
 	ereports: {
 		k: $num_ereports,
 		i: $num_ereports,
@@ -1118,10 +1162,12 @@ data "xdp-switch", {
 		"kFsat-strategy=incremental": $num_ereports,
 	},
 	measurements: {
-		k: "measure-xdp-ereport-xdp-switch.l-00:15:4d:13:12:9a,00:15:4d:13:12:9b",
+		k: "measure-xdp-ereport-xdp-switch.k-00:15:4d:13:12:9a,00:15:4d:13:12:9b",
 	}
 }
 data "xdp-alaw2ulaw", {
+	predictions_dir: $predictions_dir,
+	measured_dir: $measured_dir,
 	ereports: {
 		k: $num_ereports,
 		i: $num_ereports,
@@ -1136,10 +1182,12 @@ data "xdp-alaw2ulaw", {
 		"kFsat-strategy=incremental": $num_ereports,
 	},
 	measurements: {
-		k: "measure-xdp-ereport-xdp-alaw2ulaw.m-00:15:4d:13:12:9a,00:15:4d:13:12:9b",
+		k: "measure-xdp-ereport-xdp-alaw2ulaw.k-00:15:4d:13:12:9a,00:15:4d:13:12:9b",
 	}
 }
 data "xdp-alaw2ulaw-opt", {
+	predictions_dir: $predictions_dir,
+	measured_dir: $measured_dir,
 	ereports: {
 		k: $num_ereports,
 		i: $num_ereports,
@@ -1154,10 +1202,12 @@ data "xdp-alaw2ulaw-opt", {
 		"kFsat-strategy=incremental": $num_ereports,
 	},
 	measurements: {
-		k: "measure-xdp-ereport-xdp-alaw2ulaw-opt.m-00:15:4d:13:12:9a,00:15:4d:13:12:9b",
+		k: "measure-xdp-ereport-xdp-alaw2ulaw-opt.k-00:15:4d:13:12:9a,00:15:4d:13:12:9b",
 	}
 }
 data "xdp-dns-cache", {
+	predictions_dir: $predictions_dir,
+	measured_dir: $measured_dir,
 	ereports: {
 		k: $num_ereports,
 		i: $num_ereports,
@@ -1172,10 +1222,12 @@ data "xdp-dns-cache", {
 		"kFsat-strategy=incremental": $num_ereports,
 	},
 	measurements: {
-		k: "measure-xdp-ereport-slow-1333-xdp-dns-cache.i-00:15:4d:13:12:9a,00:15:4d:13:12:9b",
+		k: "measure-xdp-ereport-slow-1333-xdp-dns-cache.k-00:15:4d:13:12:9a,00:15:4d:13:12:9b",
 	}
 }
 data "xdp-path-explosion", {
+	predictions_dir: $predictions_dir,
+	measured_dir: $measured_dir,
 	ereports: {
 		k: $num_ereports,
 	},
@@ -1186,40 +1238,42 @@ data "xdp-path-explosion", {
 run do
 	workarounds = {
 		1 => {
-			i: { "4f50d2bf86593c0f" => ["measure-xdp-ereport-workaround-xdp-count-min.1.i-00:15:4d:13:12:9a,00:15:4d:13:12:9b-4f50d2bf86593c0f-54400000", 53300000]},
-			k: { "4f50d2bf86593c0f" => ["measure-xdp-ereport-workaround-xdp-count-min.1.i-00:15:4d:13:12:9a,00:15:4d:13:12:9b-4f50d2bf86593c0f-54400000", 53300000]},
+			i: { "4f50d2bf86593c0f" => ["measure-xdp-ereport-workaround-xdp-count-min.1.k-00:15:4d:13:12:9a,00:15:4d:13:12:9b-4f50d2bf86593c0f-54400000", 53300000]},
+			k: { "4f50d2bf86593c0f" => ["measure-xdp-ereport-workaround-xdp-count-min.1.k-00:15:4d:13:12:9a,00:15:4d:13:12:9b-4f50d2bf86593c0f-54400000", 53300000]},
 		},
 		2 => {
-			i: { "4f50d2bf86593c0f" => ["measure-xdp-ereport-workaround-xdp-count-min.2.i-00:15:4d:13:12:9a,00:15:4d:13:12:9b-4f50d2bf86593c0f-54400000", 53300000]},
-			k: { "4f50d2bf86593c0f" => ["measure-xdp-ereport-workaround-xdp-count-min.2.i-00:15:4d:13:12:9a,00:15:4d:13:12:9b-4f50d2bf86593c0f-54400000", 53300000]},
+			i: { "4f50d2bf86593c0f" => ["measure-xdp-ereport-workaround-xdp-count-min.2.k-00:15:4d:13:12:9a,00:15:4d:13:12:9b-4f50d2bf86593c0f-54400000", 53300000]},
+			k: { "4f50d2bf86593c0f" => ["measure-xdp-ereport-workaround-xdp-count-min.2.k-00:15:4d:13:12:9a,00:15:4d:13:12:9b-4f50d2bf86593c0f-54400000", 53300000]},
 		},
 		3 => {
-			i: { "4f50d2bf86593c0f" => ["measure-xdp-ereport-workaround-xdp-count-min.3.i-00:15:4d:13:12:9a,00:15:4d:13:12:9b-4f50d2bf86593c0f-54000000", 53800000]},
-			k: { "4f50d2bf86593c0f" => ["measure-xdp-ereport-workaround-xdp-count-min.3.i-00:15:4d:13:12:9a,00:15:4d:13:12:9b-4f50d2bf86593c0f-54000000", 53800000]},
+			i: { "4f50d2bf86593c0f" => ["measure-xdp-ereport-workaround-xdp-count-min.3.k-00:15:4d:13:12:9a,00:15:4d:13:12:9b-4f50d2bf86593c0f-54000000", 53800000]},
+			k: { "4f50d2bf86593c0f" => ["measure-xdp-ereport-workaround-xdp-count-min.3.k-00:15:4d:13:12:9a,00:15:4d:13:12:9b-4f50d2bf86593c0f-54000000", 53800000]},
 		},
 		4 => {
-			i: { "4f50d2bf86593c0f" => ["measure-xdp-ereport-workaround-xdp-count-min.4.i-00:15:4d:13:12:9a,00:15:4d:13:12:9b-4f50d2bf86593c0f-50100000", 49800000]},
-			k: { "4f50d2bf86593c0f" => ["measure-xdp-ereport-workaround-xdp-count-min.4.i-00:15:4d:13:12:9a,00:15:4d:13:12:9b-4f50d2bf86593c0f-50100000", 49800000]},
+			i: { "4f50d2bf86593c0f" => ["measure-xdp-ereport-workaround-xdp-count-min.4.k-00:15:4d:13:12:9a,00:15:4d:13:12:9b-4f50d2bf86593c0f-50100000", 49800000]},
+			k: { "4f50d2bf86593c0f" => ["measure-xdp-ereport-workaround-xdp-count-min.4.k-00:15:4d:13:12:9a,00:15:4d:13:12:9b-4f50d2bf86593c0f-50100000", 49800000]},
 		},
 		5 => {
-			i: { "4f50d2bf86593c0f" => ["measure-xdp-ereport-workaround-xdp-count-min.5.i-00:15:4d:13:12:9a,00:15:4d:13:12:9b-4f50d2bf86593c0f-46200000", 45900000]},
-			k: { "4f50d2bf86593c0f" => ["measure-xdp-ereport-workaround-xdp-count-min.5.i-00:15:4d:13:12:9a,00:15:4d:13:12:9b-4f50d2bf86593c0f-46200000", 45900000]},
+			i: { "4f50d2bf86593c0f" => ["measure-xdp-ereport-workaround-xdp-count-min.5.k-00:15:4d:13:12:9a,00:15:4d:13:12:9b-4f50d2bf86593c0f-46200000", 45900000]},
+			k: { "4f50d2bf86593c0f" => ["measure-xdp-ereport-workaround-xdp-count-min.5.k-00:15:4d:13:12:9a,00:15:4d:13:12:9b-4f50d2bf86593c0f-46200000", 45900000]},
 		},
 		6 => {
-			i: { "4f50d2bf86593c0f" => ["measure-xdp-ereport-workaround-xdp-count-min.6.i-00:15:4d:13:12:9a,00:15:4d:13:12:9b-4f50d2bf86593c0f-41500000", 40900000]},
-			k: { "4f50d2bf86593c0f" => ["measure-xdp-ereport-workaround-xdp-count-min.6.i-00:15:4d:13:12:9a,00:15:4d:13:12:9b-4f50d2bf86593c0f-41500000", 40900000]},
+			i: { "4f50d2bf86593c0f" => ["measure-xdp-ereport-workaround-xdp-count-min.6.k-00:15:4d:13:12:9a,00:15:4d:13:12:9b-4f50d2bf86593c0f-41500000", 40900000]},
+			k: { "4f50d2bf86593c0f" => ["measure-xdp-ereport-workaround-xdp-count-min.6.k-00:15:4d:13:12:9a,00:15:4d:13:12:9b-4f50d2bf86593c0f-41500000", 40900000]},
 		},
 		7 => {
-			i: { "4f50d2bf86593c0f" => ["measure-xdp-ereport-workaround-xdp-count-min.7.i-00:15:4d:13:12:9a,00:15:4d:13:12:9b-4f50d2bf86593c0f-35500000", 34900000]},
-			k: { "4f50d2bf86593c0f" => ["measure-xdp-ereport-workaround-xdp-count-min.7.i-00:15:4d:13:12:9a,00:15:4d:13:12:9b-4f50d2bf86593c0f-35500000", 34900000]},
+			i: { "4f50d2bf86593c0f" => ["measure-xdp-ereport-workaround-xdp-count-min.7.k-00:15:4d:13:12:9a,00:15:4d:13:12:9b-4f50d2bf86593c0f-35500000", 34900000]},
+			k: { "4f50d2bf86593c0f" => ["measure-xdp-ereport-workaround-xdp-count-min.7.k-00:15:4d:13:12:9a,00:15:4d:13:12:9b-4f50d2bf86593c0f-35500000", 34900000]},
 		},
 		8 => {
-			i: { "4f50d2bf86593c0f" => ["measure-xdp-ereport-workaround-xdp-count-min.8.i-00:15:4d:13:12:9a,00:15:4d:13:12:9b-4f50d2bf86593c0f-31100000", 30000000]},
-			k: { "4f50d2bf86593c0f" => ["measure-xdp-ereport-workaround-xdp-count-min.8.i-00:15:4d:13:12:9a,00:15:4d:13:12:9b-4f50d2bf86593c0f-31100000", 30000000]},
+			i: { "4f50d2bf86593c0f" => ["measure-xdp-ereport-workaround-xdp-count-min.8.k-00:15:4d:13:12:9a,00:15:4d:13:12:9b-4f50d2bf86593c0f-31100000", 30000000]},
+			k: { "4f50d2bf86593c0f" => ["measure-xdp-ereport-workaround-xdp-count-min.8.k-00:15:4d:13:12:9a,00:15:4d:13:12:9b-4f50d2bf86593c0f-31100000", 30000000]},
 		},
 	}
 	(1..20).each do |i|
 		data "xdp-count-min.#{i}", **({
+			predictions_dir: $predictions_dir,
+			measured_dir: $measured_dir,
 			ereports: {
 				k: $num_ereports,
 				i: $num_ereports,
@@ -1234,8 +1288,8 @@ run do
 				"kFsat-strategy=incremental": $num_ereports,
 			},
 			measurements: {
-				i: "measure-xdp-ereport-xdp-count-min.#{i}.i-00:15:4d:13:12:9a,00:15:4d:13:12:9b",
-				k: "measure-xdp-ereport-xdp-count-min.#{i}.i-00:15:4d:13:12:9a,00:15:4d:13:12:9b",
+				i: "measure-xdp-ereport-xdp-count-min.#{i}.k-00:15:4d:13:12:9a,00:15:4d:13:12:9b",
+				k: "measure-xdp-ereport-xdp-count-min.#{i}.k-00:15:4d:13:12:9a,00:15:4d:13:12:9b",
 			}
 		}.merge(
 		if workarounds[i] ;{

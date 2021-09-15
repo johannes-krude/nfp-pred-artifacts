@@ -21,7 +21,17 @@ opts = Trollop::options do
 end
 
 input = if ARGV.size > 0
-	File.open(ARGV[0])
+	file = File.open(ARGV[0])
+	file_magic = file.read(3)
+	file.seek(0)
+	if file_magic == "BZh"
+		r, w = IO.pipe
+		Process.spawn("pbzip2", "-d", 0 => file, 1 => w)
+		w.close
+		r
+	else
+		file
+	end
 else
 	STDIN
 end

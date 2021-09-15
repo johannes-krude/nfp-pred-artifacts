@@ -1,13 +1,14 @@
 #!/bin/bash
 
 set -e
-set -x
 
 DIR="data-small-eval-example"
 PROG="data-paper/programs/xdp-quic-lb.asm"
 
 mkdir -p "$DIR/predictions"
 ln -srf data-paper/measured-throughput data-small-eval-example/
+
+set -x
 
 # 20 runs of predicting the throughput of the QUIC LB (IPv4) example
 ./build/nfp-estimator -k -w 5 -S -f "$PROG" -o "$DIR/predictions/xdp-quic-lb.k.ereport"

@@ -475,6 +475,8 @@ static void parse_elf(int fd, const void **bpf_b, size_t *bpf_size,
 		return;
 	if (maps->d_type != ELF_T_BYTE)
 		errx(-1, "wrong type of maps section");
+	if (!rel_text_shdr)
+		return;
 
 	for (size_t i = 0; i < rel_text_shdr->sh_size / rel_text_shdr->sh_entsize; i++) {
 		GElf_Rel rel;

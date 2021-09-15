@@ -6,7 +6,6 @@ if [ "$#" -ne 5 ]; then
 fi
 
 set -e
-set -x
 
 # prepeare output dir
 mkdir -p data-repeated/measured-throughput
@@ -15,9 +14,14 @@ mkdir -p data-repeated/measured-throughput
 export LOGDIR=data-tmp/measured-throughput
 
 mkdir -p data-tmp
-ln -srf "$1" data-tmp/programs
-ln -srf "$2" data-tmp/predictions
-ln -srf data-repeated/measured-throughput $LOGDIR
+rm -f data-tmp/programs
+rm -f data-tmp/predictions
+rm -f $LOGDIR
+-ln -srf "$1" data-tmp/programs
+-ln -srf "$2" data-tmp/predictions
+-ln -srf data-repeated/measured-throughput $LOGDIR
+
+set -x
 
 ./scripts/measure-ereports.sh "$3" "$4" "$5"
 

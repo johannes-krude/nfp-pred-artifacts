@@ -1,4 +1,6 @@
 
+.PHONY: $(BUILD_DIR)/nfp-drv-kmods/src/nfp.ko
+
 $(BUILD_DIR)/nfp-drv-kmods/src/nfp.ko: $(BUILD_DIR)/nfp-drv-kmods
 	cd $(BUILD_DIR)/nfp-drv-kmods; make
 

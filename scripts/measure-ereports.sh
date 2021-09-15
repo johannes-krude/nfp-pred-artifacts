@@ -19,7 +19,7 @@ function measure {
 
 
 # loading the firmware may cause the kernel to crash
-./tasks/load-nfp-firmware.rb -c inp5:nf-tools wpi1
+./tasks/load-nfp-firmware.rb -c "$RX" wpi1
 
 measure xdp-ereport xdp-quic-lb.k 00:15:4d:13:12:9a,00:15:4d:13:12:9b
 measure xdp-ereport xdp-cloudflare.k 00:15:4d:13:12:9a,00:15:4d:13:12:9b
@@ -30,7 +30,7 @@ measure xdp-ereport xdp-switch.k 00:15:4d:13:12:9a,00:15:4d:13:12:9b
 
 
 # loading the firmware may cause the kernel to crash
-./tasks/load-nfp-firmware.rb -c inp5:nf-tools wpi10
+./tasks/load-nfp-firmware.rb -c "$RX" wpi10
 
 measure xdp-ereport-slow 1333 xdp-dns-cache.k 00:15:4d:13:12:9a,00:15:4d:13:12:9b
 
