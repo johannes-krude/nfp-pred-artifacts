@@ -10,6 +10,6 @@ $(BUILD_DIR)/nfp-drv-kmods:
 	cd $@.tmp; git checkout 89a77d5aaf5eca56d92fee6bc88bde7fac47645a
 	cd $@.tmp; git config user.name make
 	cd $@.tmp; git config user.email anon@make
-	cd $@.tmp; git am ../../patches/nfp-drv-kmods-89a77d5a-use-array-ptr-from-gprB_23.patch
+	cd $@.tmp; git am ../../patches/nfp-drv-kmods-89a77d5a-0001-use-array-ptr-from-gprB_23.patch
 	mv $@.tmp $@
 
