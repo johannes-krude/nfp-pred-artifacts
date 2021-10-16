@@ -33,6 +33,7 @@ Some steps need up to three computers, a Netronome Agilio LX 2x40 GbE NIC, and a
 ### Docker Image
 
 - Execution time: ~25 minutes
+- Memory: minimum 4 GiB, recommended 16 GiB
 - Disk space: ~5 GiB
 
 Those evaluation steps which require no special hardware can be executed within the following Docker environment.
@@ -41,7 +42,8 @@ Build the docker image with:
 
     sudo docker build -t nfp-pred-artifacts:latest - < Dockerfile
 
-Start an interactive shell in the Docker image with:
+Start an interactive shell in the Docker image with the following command.
+Ensure, that the Docker image can allocate at least 4 GiB of memory, otherwise the compilation will fail.
 
     sudo docker run -it --rm -u $(id -u):$(id -g) -v $(pwd):/nfp-pred-artifacts -w /nfp-pred-artifacts nfp-pred-artifacts:latest
 
@@ -55,6 +57,7 @@ This docker image can now be used for the [small evaluation example](#small-eval
 ### Installing Ubuntu 20.04 with Dependencies
 
 - Execution time: at least 25 minutes
+- Memory: minimum 4 GiB, recommended 16 GiB
 
 All evaluation steps which use the Netronome SmartNIC can not be executed with Docker or any other virtualization environment.
 Instead, bare metal Ubuntu 20.04 is needed.
@@ -66,6 +69,7 @@ Please install the following packets on all computers.
     apt-get install --no-install-recommends git build-essential cmake libjudy-dev libpcap-dev ruby libtrollop-ruby binutils-dev libiberty-dev libelf-dev pbzip2 texinfo openssh-client bison flex libssl-dev z3 wget clang llvm libprotobuf-dev protobuf-compiler libtool libgc-dev libfl-dev libgmp-dev libboost-dev libboost-iostreams-dev libboost-graph-dev pkg-config python3 python3-scapy python3-ipaddr python3-ply python3-pip tcpdump sudo linux-headers-generic python2 gawk graphviz gnuplot texlive-full
 
 This repository needs to be cloned into the users home directory on each computer and the tools need to be compiled with the following command.
+Compiling requires at least 4 GiB of memory.
 
     make
 
@@ -179,6 +183,8 @@ When omitting this step, the measurements used in the paper reside in `data-pape
 - Input: examples/xdp-lookup12.c
 - Output: data-repeated/measurements-section4/*.dat.tar
 - Output: data-repeated/measurements-section4/*.log.bz2
+
+Run:
 
     ./4-measurements-section4.sh user@host-rx:nfp-pred-artifacts user@switch:nfp-pred-artifacts user@host-tx:nfp-pred-artifacts
 
