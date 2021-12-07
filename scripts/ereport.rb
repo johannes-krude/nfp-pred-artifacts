@@ -53,6 +53,7 @@ class Ereport
 	attr_reader :cfg_cputime
 	attr_reader :cfg_threads_cputime
 	attr_reader :z3_cputime
+	attr_reader :z3_sat_checks
 	attr_reader :cycles
 	attr_reader :dram_cycles
 	attr_reader :maxcycles
@@ -67,6 +68,7 @@ class Ereport
 		@cfg_cputime = nil
 		@cfg_threads_cputime = nil
 		@z3_cputime = nil
+		@z3_sat_checks = nil
 		@size = 0
 		@size_max_cycles = nil
 		@size_dram_cycles = nil
@@ -94,6 +96,8 @@ class Ereport
 			@cfg_threads_cputime = $'.to_f
 		when /\Az3\.cputime:/
 			@z3_cputime = $'.to_f
+		when /\Az3\.sat_checks:/
+			@z3_sat_checks = $'.to_i
 		when /\Acycles:/
 			@cycles = $'.to_i
 		when /\Amax cycles:/
@@ -347,11 +351,11 @@ def output(e,ends=false)
 			raise
 		end if c || d || w
 		if !$early && x
-			puts "early\t#{"%.6f" % e.time}\t#{x}\t#{$unsatisfiable}\t#{e.z3_cputime}\t#{e.cfg_cputime+e.cfg_threads_cputime}"
+			puts "early\t#{"%.6f" % e.time}\t#{x}\t#{$unsatisfiable}\t#{e.z3_cputime}\t#{e.cfg_cputime+e.cfg_threads_cputime}\t#{e.z3_sat_checks}"
 			$early = true
 		end
 		if !$first && y
-			puts "first\t#{"%.6f" % e.time}\t#{y}\t#{$unsatisfiable}\t#{e.z3_cputime}\t#{e.cfg_cputime+e.cfg_threads_cputime}"
+			puts "first\t#{"%.6f" % e.time}\t#{y}\t#{$unsatisfiable}\t#{e.z3_cputime}\t#{e.cfg_cputime+e.cfg_threads_cputime}\t#{e.z3_sat_checks}"
 			$first = true
 		end
 
@@ -359,7 +363,7 @@ def output(e,ends=false)
 		$max_cfg_threads_cputime = e.cfg_threads_cputime if e.cfg_threads_cputime
 		$max_z3_cputime = e.z3_cputime if e.z3_cputime
 		if ends
-			puts "#{e.name == "N" ? "last" : "end"}\t#{"%.6f" % $maxtime}\t#{$maxnum}\t#{$unsatisfiable}\t#{$max_z3_cputime}\t#{$max_cfg_cputime+$max_cfg_threads_cputime}"
+			puts "#{e.name == "N" ? "last" : "end"}\t#{"%.6f" % $maxtime}\t#{$maxnum}\t#{$unsatisfiable}\t#{$max_z3_cputime}\t#{$max_cfg_cputime+$max_cfg_threads_cputime}\t#{e.z3_sat_checks}"
 			return
 		end
 	end

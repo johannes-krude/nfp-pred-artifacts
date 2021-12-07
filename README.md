@@ -1,6 +1,16 @@
-# Artifacts from the CoNEXT '21 Paper (conditionally accepted) "Determination of Throughput Guarantees for Processor-based SmartNICs"
+# Determination of Throughput Guarantees for Processor-based SmartNICs
 
-This repository can be used to **repeat** the evaluation from the paper and can be **reused** to [analyze new XDP/BPF programs](#creating-and-analyzing-new-programs) for there worst-case throughput capacity.
+The CoNEXT '21 [paper](https://dl.acm.org/doi/10.1145/3485983.3494842) describes an approach to determine a lower bound for the achievable packet- and bit- rate of XDP/BPF programs offloaded onto an Netronome Agilio CX SmartNIC.
+
+This repository contains a full implementation of the approach and all tools and data used in the evaluation.
+
+<img width="100px" src=".misc/artifacts_evaluated_reusable_v1_1.png" title="artifacts evaluated reusable" />
+<img width="100px" src=".misc/artifacts_evaluated_functional_v1_1.png" title="artifacts evaluated functional" />
+<img width="100px" src=".misc/artifacts_available_v1_1.png" title="artifacts available" />
+
+## Overview
+
+The content of this repository can be used to **repeat** the evaluation from the paper and can be **reused** to [analyze new XDP/BPF programs](#creating-and-analyzing-new-programs) for there worst-case throughput capacity.
 
 Repeating the full evaluation takes several days and requires special hardware (Netronome SmartNIC, Barefoot Tofino Switch).
 The evaluation is therefore structured into individual steps to enable repeating only parts of the evaluation when not having all required hardware or having only limited time.
@@ -28,7 +38,7 @@ With enough time, but without a Netronome SmartNIC, the following is possible.
 ## Getting Started
 
 All evaluation steps require at least a single computer running the [docker image](#docker-image) or [Ubuntu 20.04](#installing-ubuntu-2004-with-dependencies).
-Some steps need up to three computers, a Netronome Agilio LX 2x40 GbE NIC, and a Barefoot Tofino based Edgecore Wedge 100BF-32X switch.
+Some steps need up to three computers, a Netronome Agilio CX 2x40 GbE NIC, and a Barefoot Tofino based Edgecore Wedge 100BF-32X switch.
 
 ### Docker Image
 

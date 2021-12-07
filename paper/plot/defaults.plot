@@ -1,4 +1,4 @@
-set terminal pdfcairo size 8.47415cm,3.5cm enhanced color fontscale 0.75 font 'Linux Libertine,10pt'
+set terminal pdfcairo size 8.47415cm,3.5cm enhanced color fontscale 0.75 font 'Linux Libertine,9pt'
 set encoding utf8
 set pointintervalbox 1.6
 set style line 97 lc rgb '#aaaaaa' lt 1 dt 3

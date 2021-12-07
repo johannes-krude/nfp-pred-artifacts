@@ -1080,8 +1080,8 @@ require "trollop"
 
 opts = Trollop::options do
 	banner "usage: #{$0} <ruleset> [target...]"
-	opt :datadir, "read data from directory", default: ""
-	opt :outdir, "write output to directory", default: ""
+	opt :datadir, "read data from directory", default: "."
+	opt :outdir, "write output to directory", default: "."
 	opt :ruleset, "additional ruleset file", type: :string, multi: true
 	opt :time
 	opt :rule, "show rule result", type: :strings, short: :r

@@ -1,18 +1,18 @@
-set terminal pdfcairo size 8.47415cm,3.6cm enhanced color fontscale 0.75 font 'Linux Libertine,10pt'
+set terminal pdfcairo size 8.47415cm,3.6cm enhanced color fontscale 0.75 font 'Linux Libertine,9pt'
 
 set xlabel "Count-Min Program Variant [# hash functions]" enhanced
 set ylabel "Packet Rate [pkt/s]" enhanced
-set xrange[0:20.75]
+set xrange[0:20.4]
 set yrange[0:65000000]
 
 set ytics 10000000
-set xtics 2
-set mxtics 2
+set xtics 1
+set mxtics 1
 set mytics 2
 
 set key samplen 0  bottom left at 0.25,65000000 nobox
 #set rmargin 30
-set tmargin 2.5
+set tmargin 2.6
 
 set label "NIC MAC Limit" at 20,54400000 font 'Linux Libertine,9pt' right offset 0,-0.3
 

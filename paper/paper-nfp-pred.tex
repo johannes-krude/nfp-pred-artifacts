@@ -2,8 +2,7 @@
 %!TEX encoding = UTF-8 Unicode
 %!BIB TS-program = bibtex
 
-\documentclass[10pt,letterpaper,sigconf,anonymous,nonacm,screen]{acmart}
-\settopmatter{printacmref=false, printccs=false, printfolios=true}
+\documentclass[sigconf,screen,authordraft]{acmart}
 
 \usepackage{etoolbox}
 \usepackage{acro}
@@ -21,9 +20,9 @@
 
 \usepackage{listings}
 \lstset{
-	basicstyle=\ttfamily\small,
+	basicstyle=\ttfamily\normalsize,
 	tabsize=4,
-	numberstyle=\scriptsize,
+	numberstyle=\small,
 	numbersep=5pt,
 	xleftmargin=10pt,
 	numbers=left,
@@ -50,9 +49,10 @@
 \usetikzlibrary{calc}
 \usetikzlibrary{decorations.pathreplacing}
 \usetikzlibrary{shapes.multipart}
-\usetikzlibrary{spy}
 \usetikzlibrary{backgrounds}
 \usepackage{prognet}
+
+\newenvironment{DIFnomarkup}{}{}
 
 
 \labelformat{figure}{Figure~#1}
@@ -71,6 +71,22 @@
 \newcommand{\afblock}[1]{\noindent{\textbf{#1.}}}
 \newcommand{\takeaway}[1]{\noindent{\textbf{Takeaway.}} \textit{#1}}
 
+\newenvironment{spygraphics}[1]{%
+	\def\spygraphicsfile{#1}
+	\begin{tikzpicture}[inner sep=0]
+		\node[anchor=south west] {\includegraphics[page=1]{\spygraphicsfile}};
+}{%
+	\end{tikzpicture}%
+}
+\newcommand{\spyon}[4]{
+	\node[circle,draw=RWTHrot,minimum width=#4/#2,thin] (Aon) at (#1) {};
+	\node[circle,draw=RWTHrot,minimum width=#4,thick,fill=white] (Ain) at (#3) {};
+	\draw[RWTHrot] (Aon) edge (Ain);
+	\begin{scope}[shift=($(Ain)-#2*(Aon)$)]
+		\clip (Ain) circle (#4/2);
+		\node[anchor=south west] {\includegraphics[page=2,scale=#2]{\spygraphicsfile}};
+	\end{scope}
+}%
 
 \hyphenation{off-load-ing an-a-ly-zing meth-od-ol-o-gy}
 
@@ -133,47 +149,59 @@
 \input{plot/wpi.all-lookup.tex}
 \input{plot/wpi.series-inc.tex}
 
+\input{plot/xdp-cloudflare.tex}
 \input{plot/numbers-xdp-cloudflare.k.tex}
 \input{plot/rate-xdp-cloudflare.k.tex}
 \input{plot/progress-xdp-cloudflare.k.tex}
 
+\input{plot/xdp-quic-lb.tex}
 \input{plot/numbers-xdp-quic-lb.k.tex}
 \input{plot/rate-xdp-quic-lb.k.tex}
 \input{plot/progress-xdp-quic-lb.k.tex}
 
+\input{plot/xdp-quic-lb-ipv6-options.tex}
 \input{plot/numbers-xdp-quic-lb-ipv6-options.k.tex}
 \input{plot/rate-xdp-quic-lb-ipv6-options.k.tex}
 \input{plot/progress-xdp-quic-lb-ipv6-options.k.tex}
 
+\input{plot/xdp-switch.tex}
 \input{plot/numbers-xdp-switch.k.tex}
 \input{plot/rate-xdp-switch.k.tex}
 \input{plot/progress-xdp-switch.k.tex}
 
+\input{plot/xdp-alaw2ulaw.tex}
 \input{plot/numbers-xdp-alaw2ulaw.k.tex}
 \input{plot/rate-xdp-alaw2ulaw.k.tex}
 \input{plot/progress-xdp-alaw2ulaw.k.tex}
 
+\input{plot/xdp-alaw2ulaw-opt.tex}
 \input{plot/numbers-xdp-alaw2ulaw-opt.k.tex}
 \input{plot/rate-xdp-alaw2ulaw-opt.k.tex}
 \input{plot/progress-xdp-alaw2ulaw-opt.k.tex}
 
+\input{plot/xdp-dns-cache.tex}
 \input{plot/numbers-xdp-dns-cache.k.tex}
 \input{plot/rate-xdp-dns-cache.k.tex}
 \input{plot/progress-xdp-dns-cache.k.tex}
 
+\input{plot/xdp-count-min.5.tex}
 \input{plot/numbers-xdp-count-min.5.k.tex}
 \input{plot/rate-xdp-count-min.5.k.tex}
 \input{plot/progress-xdp-count-min.5.k.tex}
+\input{plot/xdp-count-min.10.tex}
 \input{plot/numbers-xdp-count-min.10.k.tex}
 \input{plot/rate-xdp-count-min.10.k.tex}
 \input{plot/progress-xdp-count-min.10.k.tex}
+\input{plot/xdp-count-min.15.tex}
 \input{plot/numbers-xdp-count-min.15.k.tex}
 \input{plot/rate-xdp-count-min.15.k.tex}
 \input{plot/progress-xdp-count-min.15.k.tex}
+\input{plot/xdp-count-min.20.tex}
 \input{plot/numbers-xdp-count-min.20.k.tex}
 \input{plot/rate-xdp-count-min.20.k.tex}
 \input{plot/progress-xdp-count-min.20.k.tex}
 
+\input{plot/xdp-path-explosion.tex}
 \input{plot/numbers-xdp-path-explosion.k.tex}
 \input{plot/rate-xdp-path-explosion.k.tex}
 \input{plot/progress-xdp-path-explosion.k.tex}
@@ -181,6 +209,74 @@
 \newcommand{\mdata}[3]{%
 	\csname #1X#2X#3\endcsname%
 }
+
+
+\makeatletter
+\def\proginfo#1#2#3#4#5{%
+	\expandafter\protected@xdef\csname prognameX#1\endcsname{#2}%
+	\expandafter\gdef\csname progciteX#1\endcsname{#3}%
+	\expandafter\gdef\csname proglangX#1\endcsname{#4}%
+	\expandafter\gdef\csname progloopsX#1\endcsname{#5}%
+}
+\def\progname#1{\csname prognameX#1\endcsname}
+\def\progcite#1{%
+	\expandafter\ifx\csname progciteX#1\endcsname\empty%
+	\else%
+		~\cite{\csname progciteX#1\endcsname}%
+	\fi%
+}
+\def\proglang#1{\csname proglangX#1\endcsname}
+\def\progloops#1{\csname progloopsX#1\endcsname}
+\makeatother
+
+\proginfo{xdp.switch}%
+	{switch.p4 {\small (parser)}}%
+	{p4c}%
+	{P4}%
+	{--}%
+\proginfo{xdp.cloudflare}%
+	{Cloudflare DoS}%
+	{cloudflare,bpftools}%
+	{C}%
+	{--}%
+\proginfo{xdp.quic.lb}%
+	{QUIC LB {\small (IPv4)}}
+	{quic-lb}%
+	{C}%
+	{--}%
+\proginfo{xdp.quic.lb.ipv6.options}%
+	{QUIC LB {\small (IPv6)}}%
+	{quic-lb}%
+	{C}%
+	{\checkmark}%
+\proginfo{xdp.alaw2ulaw}%
+	{RTP a\shortrightarrow{}μ-law}%
+	{rfc7655,g.711}%
+	{C}%
+	{\checkmark}%
+\proginfo{xdp.alaw2ulaw.opt}%
+	{RTP a\shortrightarrow{}μ-law {\small (opt)}}%
+	{rfc7655,g.711}%
+	{C}%
+	{\checkmark}%
+\proginfo{xdp.dns.cache}%
+	{DNS Cache}%
+	{rfc1035}%
+	{C}%
+	{--}%
+\foreach \n in {1,...,20}{%
+	\proginfo{xdp.count.min.\n}%
+		{Count-Min {\small (\n)}}%
+		{count-min-sketch}%
+		{C}%
+		{\checkmark}%
+}
+\proginfo{xdp.path.explosion}%
+	{Path Explosion}%
+	{}%
+	{C}%
+	{--}%
+
 
 \newcommand{\maclimit}[0]{%
 	\unit[54.4M]{pkts/s}%
@@ -231,15 +327,53 @@
 \newcommand{\lncolor}[1]{\textcolor{RWTHorange!50!RWTHbordeaux}{#1}}
 \newcommand{\islandcolor}[1]{\textcolor{RWTHblau}{#1}}
 \newcommand{\corecolor}[1]{\textcolor{RWTHgrun}{#1}}
-\newcommand{\dramcolor}[1]{\textcolor{RWTHturkis!50}{#1}}
-\newcommand{\fabriccolor}[1]{\textcolor{RWTHmagenta!50}{#1}}
+\newcommand{\dramcolor}[1]{\textcolor{RWTHturkis}{#1}}
+\newcommand{\fabriccolor}[1]{\textcolor{RWTHmagenta}{#1}}
 
-\setcopyright{none}
 
+\begin{CCSXML}
+<ccs2012>
+	<concept>
+		<concept_id>10003033.10003099.10003102</concept_id>
+		<concept_desc>Networks~Programmable networks</concept_desc>
+		<concept_significance>500</concept_significance>
+	</concept>
+	<concept>
+		<concept_id>10003033.10003079.10011672</concept_id>
+		<concept_desc>Networks~Network performance analysis</concept_desc>
+		<concept_significance>300</concept_significance>
+	</concept>
+	<concept>
+		<concept_id>10011007.10011074.10011099.10011692</concept_id>
+		<concept_desc>Software and its engineering~Formal software verification</concept_desc>
+		<concept_significance>300</concept_significance>
+	</concept>
+</ccs2012>
+\end{CCSXML}
 
 \begin{document}
 
-\title{Determination of Throughput Guarantees for Processor-based SmartNICs}
+\acmYear{2021}
+\copyrightyear{2021}
+\setcopyright{acmlicensed}
+\acmConference[CoNEXT '21]{The 17th International Conference on emerging Networking EXperiments and Technologies}{December 7--10, 2021}{Virtual Event, Germany}
+\acmBooktitle{The 17th International Conference on emerging Networking EXperiments and Technologies (CoNEXT '21), December 7--10, 2021, Virtual Event, Germany}
+\acmPrice{15.00}
+\acmDOI{10.1145/3485983.3494842}
+\acmISBN{978-1-4503-9098-9/21/12}
+
+\ccsdesc[500]{Networks~Programmable networks}
+\ccsdesc[300]{Networks~Network Performance analysis}
+\ccsdesc[300]{Software and its engineering~Formal software verification}
+
+\keywords{BPF/XDP, SmartNIC, packet rate, bit rate, longest path search}
+
+\title[Determination of Throughput Guarantees for Processor-based SmartNICs]{Determination of Throughput Guarantees\\for Processor-based SmartNICs}
+
+% decrease horizontal space between authors
+\makeatletter
+\author@bx@sep=4pt\relax
+\makeatother
 
 \author{Johannes Krude}
 \affiliation{%
@@ -324,13 +458,13 @@ Device-induced latency on a fully loaded SmartNIC is dominated by queuing behavi
 We focus on throughput instead of latency and present a methodology to determine a lower bound for the achievable packet and bit rate of a program.
 
 A program developer or network operator can use our fully automated approach to derive the worst-case guaranteed throughput of a program.
-If this guaranteed throughput is high enough to not cause any congestion, the program can be safely executed on the data path.
-In case the throughput of the analyzed program does not yet meet the intended demand, she can try a different program variant or further optimize the worst-case which is identified by our approach.
+If this guaranteed throughput is good enough to, \eg{} not cause any congestion, the program can be safely executed on the data path.
+In case the throughput of the analyzed program does not yet meet the intended demand, she can try a different program variant or further optimize the identified worst-case.
 
 Throughput guarantees are related to the worst-case execution time which is a well-established field of research (see \cite{wcet} for an overview) and is a hard problem for general programs on typical processors.
 Packet processing programs are simpler to analyze, since they typically have no unbounded loops~\cite{BOLT,gauntlet,lemur}.
-Existing packet processing performance analysis work~\cite{BOLT,castan} targets general purpose processors and determine only rough estimates such as the number of executed instructions and number of cache misses.
-They do not identify the worst-case~\cite{castan} or require exhaustive symbolic execution~\cite{BOLT} which results in unfeasibly long analysis times.
+Existing packet processing performance analysis work targets general purpose processors ~\cite{symperf,castan,BOLT} and determine only rough estimates such as the number of executed instructions and number of memory accesses ~\cite{BOLT} or use simplifying heuristics~\cite{symperf,castan}.
+They do not identify the worst-case~\cite{castan} or require exhaustive symbolic execution~\cite{symperf,BOLT} which results in unfeasibly long analysis times.
 We instead target a SmartNIC without memory caches, analyze throughput instead of execution time, can determine both packet rate and bit rate guarantees, and achieve short analysis time due to incremental path enumeration.
 
 To achieve short analysis time, we only analyze the slowest program paths.
@@ -402,11 +536,11 @@ Some \islandcolor{islands} contain \corecolor{processing cores} whereas others c
 		#1]{#2}{};
 		\node[%
 			overlay,%
-			font=\scriptsize,%
+			font=\small,%
 			align=center,%
 		] at ($(#2)+(0,2.5\macr/2)$) {%
-			\normalsize{MAC}\\[0.2em]
-			10-100 Gb\\
+			\normalsize{MAC}\\
+			10-100 Gb\\[-0.2em]
 			Ethernet
 		};
 		\path[
@@ -459,7 +593,7 @@ Some \islandcolor{islands} contain \corecolor{processing cores} whereas others c
 		\node[%
 			overlay,%
 			align=center,%
-			font=\scriptsize\itshape,%
+			font=\small\itshape,%
 		] at ($(#2)+(0,7\ramr/2+2\corer/2)$) {%
 			process\smash{i}ng\\[-0.3em]cores
 		};
@@ -469,7 +603,7 @@ Some \islandcolor{islands} contain \corecolor{processing cores} whereas others c
 			($(#2.south east)+(-\ramr,5\ramr)$) --
 			($(#2.south west)+(\ramr,5\ramr)$) --
 			cycle;
-		\node[overlay,font=\scriptsize\bfseries] at ($(#2.south)+(0,3\ramr)$) {SRAM};
+		\node[overlay,font=\small\bfseries] at ($(#2.south)+(0,3\ramr)$) {SRAM};
 		\foreach \x in {0,...,4} {
 			\path[draw=black,fill=RWTHgrun] 
 				($(#2.south west)+(\ramr+\x\ramr+\x\corer,6\ramr)$)
@@ -488,7 +622,7 @@ Some \islandcolor{islands} contain \corecolor{processing cores} whereas others c
 		\node[%
 			overlay,%
 			align=center,%
-			font=\scriptsize\itshape,%
+			font=\small\itshape,%
 		] at ($(#2)-(0,2.4\dramr/2+2\ramr/2)$) {memory\\[-0.3em]en\smash{g}ine};
 		\foreach \x in {1,2,5,6,11,12,15,16} {
 			\path[draw=black,ultra thin]
@@ -523,14 +657,14 @@ Some \islandcolor{islands} contain \corecolor{processing cores} whereas others c
 		]
 			($(#2.north west)+(0,-2.4\dramr-2\ramr)$)
 			rectangle (#2.south east);
-		\node[overlay,font=\scriptsize\bfseries] at ($(#2.north west)+(0.5\dramr,-0.6\dramr)$) {2};
-		\node[overlay,font=\scriptsize\bfseries] at ($(#2.north west)+(1.5\dramr+\ramr,-0.6\dramr)$) {G};
-		\node[overlay,font=\scriptsize\bfseries] at ($(#2.north west)+(2.5\dramr+2\ramr,-0.6\dramr)$) {i};
-		\node[overlay,font=\scriptsize\bfseries] at ($(#2.north west)+(3.5\dramr+3\ramr,-0.6\dramr)$) {B};
-		\node[overlay,font=\scriptsize\bfseries] at ($(#2.north west)+(0.5\dramr,-1.8\dramr-\ramr)$) {D};
-		\node[overlay,font=\scriptsize\bfseries] at ($(#2.north west)+(1.5\dramr+\ramr,-1.8\dramr-\ramr)$) {R};
-		\node[overlay,font=\scriptsize\bfseries] at ($(#2.north west)+(2.5\dramr+2\ramr,-1.8\dramr-\ramr)$) {A};
-		\node[overlay,font=\scriptsize\bfseries] at ($(#2.north west)+(3.5\dramr+3\ramr,-1.8\dramr-\ramr)$) {M};
+		\node[overlay,font=\small\bfseries] at ($(#2.north west)+(0.5\dramr,-0.6\dramr)$) {2};
+		\node[overlay,font=\small\bfseries] at ($(#2.north west)+(1.5\dramr+\ramr,-0.6\dramr)$) {G};
+		\node[overlay,font=\small\bfseries] at ($(#2.north west)+(2.5\dramr+2\ramr,-0.6\dramr)$) {i};
+		\node[overlay,font=\small\bfseries] at ($(#2.north west)+(3.5\dramr+3\ramr,-0.6\dramr)$) {B};
+		\node[overlay,font=\small\bfseries] at ($(#2.north west)+(0.5\dramr,-1.8\dramr-\ramr)$) {D};
+		\node[overlay,font=\small\bfseries] at ($(#2.north west)+(1.5\dramr+\ramr,-1.8\dramr-\ramr)$) {R};
+		\node[overlay,font=\small\bfseries] at ($(#2.north west)+(2.5\dramr+2\ramr,-1.8\dramr-\ramr)$) {A};
+		\node[overlay,font=\small\bfseries] at ($(#2.north west)+(3.5\dramr+3\ramr,-1.8\dramr-\ramr)$) {M};
 	}
 	\newcommand{\nfppcie}[2][]{%
 		\nfpisland[%
@@ -571,10 +705,13 @@ Some \islandcolor{islands} contain \corecolor{processing cores} whereas others c
 	\newcommand{\nfpetc}[2][]{%
 		\nfpisland[%
 			draw=none,
-			font=\scriptsize,%
+			font=\small,%
 		#1]{#2}{
-			more\\co-processors\\
-			(crypto, ARM,\\more memory\\engines, \dots)
+			more\\[-0.2em]
+			co-processors\\[-0.2em]
+			(crypto, ARM,\\[-0.2em]
+			more memory\\[-0.2em]
+			engines, \dots)
 		}%
 	}
 	\begin{tikzpicture}
@@ -589,20 +726,22 @@ Some \islandcolor{islands} contain \corecolor{processing cores} whereas others c
 		\nfppcie[below=\nfpislandhgap of emem1.south]{pcie1}
 		\nfpetc[below=\nfpislandhgap of cores3.south]{etc}
 		\coordinate (middle) at ($(cores2)!0.5!(cores5)$);
-		\flow[draw=RWTHmagenta!50,thick]{{(mac1.south),(mac2.north)}}
-		\flow[draw=RWTHmagenta!50,thick]{{(cores1.south),(cores4.north)}}
-		\flow[draw=RWTHmagenta!50,thick]{{(cores2.south),(cores5.north)}}
-		\flow[draw=RWTHmagenta!50,thick]{{(cores3.south),(etc.north)}}
-		\flow[draw=RWTHmagenta!50,thick]{{(emem1.south),(pcie1.north)}}
-		\flow[draw=RWTHmagenta!50,thick]{{(mac1.south),(mac1.south|-middle),(cores1.south|-middle),(cores1.south)}}
-		\flow[draw=RWTHmagenta!50,thick]{{(mac2.north),(mac2.north|-middle),(cores4.north|-middle),(cores4.north)}}
-		\flow[draw=RWTHmagenta!50,thick]{{(cores1.south),(cores1.south|-middle),(cores2.south|-middle),(cores2.south)}}
-		\flow[draw=RWTHmagenta!50,thick]{{(cores4.north),(cores4.north|-middle),(cores5.north|-middle),(cores5.north)}}
-		\flow[draw=RWTHmagenta!50,thick]{{(cores2.south),(cores2.south|-middle),(cores3.south|-middle),(cores3.south)}}
-		\flow[draw=RWTHmagenta!50,thick]{{(cores5.north),(cores5.north|-middle),(etc.north|-middle),(etc.north)}}
-		\flow[draw=RWTHmagenta!50,thick]{{(cores3.south),(cores3.south|-middle),(emem1.south|-middle),(emem1.south)}}
-		\flow[draw=RWTHmagenta!50,thick]{{(etc.north),(etc.north|-middle),(pcie1.north|-middle),(pcie1.north)}}
-		\flow[draw=RWTHmagenta!50,thick]{{(middle-|cores1.west),(middle-|cores3.east)}}
+		\begin{scope}[on background layer]
+			\flow[draw=RWTHmagenta!75,thick]{{(mac1.south),(mac2.north)}}
+			\flow[draw=RWTHmagenta!75,thick]{{(cores1.south),(cores4.north)}}
+			\flow[draw=RWTHmagenta!75,thick]{{(cores2.south),(cores5.north)}}
+			\flow[draw=RWTHmagenta!75,thick]{{(cores3.south),(etc.north)}}
+			\flow[draw=RWTHmagenta!75,thick]{{(emem1.south),(pcie1.north)}}
+			\flow[draw=RWTHmagenta!75,thick]{{(mac1.south),(mac1.south|-middle),(cores1.south|-middle),(cores1.south)}}
+			\flow[draw=RWTHmagenta!75,thick]{{(mac2.north),(mac2.north|-middle),(cores4.north|-middle),(cores4.north)}}
+			\flow[draw=RWTHmagenta!75,thick]{{(cores1.south),(cores1.south|-middle),(cores2.south|-middle),(cores2.south)}}
+			\flow[draw=RWTHmagenta!75,thick]{{(cores4.north),(cores4.north|-middle),(cores5.north|-middle),(cores5.north)}}
+			\flow[draw=RWTHmagenta!75,thick]{{(cores2.south),(cores2.south|-middle),(cores3.south|-middle),(cores3.south)}}
+			\flow[draw=RWTHmagenta!75,thick]{{(cores5.north),(cores5.north|-middle),(etc.north|-middle),(etc.north)}}
+			\flow[draw=RWTHmagenta!75,thick]{{(cores3.south),(cores3.south|-middle),(emem1.south|-middle),(emem1.south)}}
+			\flow[draw=RWTHmagenta!75,thick]{{(etc.north),(etc.north|-middle),(pcie1.north|-middle),(pcie1.north)}}
+			\flow[draw=RWTHmagenta!75,thick]{{(middle-|cores1.west),(middle-|cores3.east)}}
+		\end{scope}
 	\end{tikzpicture}
 	\caption{The \acl{NFP} architecture.}
 	\label{fig:nfp-architecture}
@@ -616,12 +755,13 @@ Instead of caches, memory access latency is masked by cooperative hyper-threadin
 The \ac{NFP} has different kinds of memory with varying access latencies~\cite{joy-of-micro-c}.
 Each processing core has fast access to its own instruction and data memory, medium latency when accessing the SRAM shared by all cores of its island, and some larger latency when waiting for a response from the memory engine which handles DRAM access.
 Unlike when using a cache hierarchy, pointers always explicitly encode which memory to access.
+When sending a memory request to the memory engine which handles DRAM access, transactional commands enable operations such as atomic increments without locks.
 
 \afblock{BPF/XDP on \acs{NFP}}
 We analyze NFP Programs produced by the BPF/XDP~\cite{XDP,XDP-offload} toolchain since it supports high-level programming languages such as C and P4 and compiles programs to both x86\_64 and \ac{NFP} bytecode~\cite{XDP-offload,nfp-drv-kmods}.
 A simplified example program is shown in \ref{fig:bpf-prog}.
 The Linux kernel loads BPF/XDP programs onto the NIC and verifies program termination by calculating loop bounds and verifies that packet memory accesses are preceded by packet size checks~\cite{XDP}.
-The NIC's firmware~\cite{nic-firmware} accepts packets over Ethernet and distributes them to 50~processing cores where the BPF/XDP program is invoked for each packet.
+The NIC's firmware~\cite{nic-firmware} accepts packets over Ethernet and evenly distributes them to 50~processing cores where the BPF/XDP program is invoked for each packet.
 The program may modify an initial part of the packet in the island's SRAM, may access permanent state in the shared DRAM, and finally decides whether to drop a packet, to transmit it over Ethernet, or forward it over PCIe to the host.
 
 Our goal is, given such a BPF/XDP program compiled to \ac{NFP} bytecode, to determine a guaranteed throughput that the NIC will always achieve.
@@ -630,22 +770,6 @@ We, therefore, estimate and compare the amount of processing and DRAM access of 
 
 \section{Throughput Analysis}
 \label{sec:throughput-analysis}
-
-\begin{figure}[t]
-	\begin{lstlisting}[numberstyle=\scriptsize\lncolor]
-int main(pkt) {
-	if (pkt.size < 100)
-		return XDP_DROP;
-	if (pkt[ethtype] == ETH_IPv4)
-		atomic_inc(&ip4_counter, 1);
-	if (pkt[ethtype] == ETH_IPv6)
-		for (i = 0; i < 10; i++) nop();
-	return XDP_PASS;
-}
-	\end{lstlisting}
-	\caption{A simplified example of a BPF/XDP program.}
-	\label{fig:bpf-prog}
-\end{figure}
 
 We want to establish throughput guarantees for SmartNIC programs to enable program developers and network operators to assess whether a given program on a given SmartNIC can achieve the required bit or packet rate.
 We do this with a fully automated analysis for a program's worst-case throughput capacity.
@@ -674,6 +798,30 @@ When identifying paths through the program, we may encounter impossible paths th
 Looking at our example, the path with the highest number of executed instructions (\lncolor2\parrow{}\lncolor4\parrow{}\lncolor5\parrow{}\lncolor6\parrow{}\lncolor7\parrow{}\lncolor8) cannot be triggered by any packet since the \lstinline$if$ conditions in lines \lncolor4 and \lncolor6 contradict.
 If such an impossible path is estimated to yield the lowest throughput capacity, its guarantee is not in itself wrong, however, as this execution can never occur in reality, the throughput bound may be far off from the actual (higher) lowest throughput capacity.
 As such, checking whether paths are possible has the potential of more closely estimating throughput guarantees.
+
+\begin{figure}[t]
+	\begin{lstlisting}[numberstyle=\small\lncolor]
+int main(pkt) {
+	if (pkt.size < 100)
+		return XDP_DROP;
+	if (pkt[ethtype] == ETH_IPv4)
+		atomic_inc(&ip4_counter, 1);
+	if (pkt[ethtype] == ETH_IPv6)
+		for (i = 0; i < 10; i++) nop();
+	return XDP_PASS;
+}
+	\end{lstlisting}
+	\caption{A simplified example of a BPF/XDP program.}
+	\label{fig:bpf-prog}
+\end{figure}
+
+
+\afblock{Stateful Behavior}
+Program behavior may depend on permanent state stored in the \ac{NFP}'s shared DRAM.
+Whether a program path is possible, therefore, may depend on the content of the DRAM.
+By assuming, that the DRAM initially may contain any value, we analyze a broad range of program paths and establish a throughput guarantee which is valid independent of the actual DRAM content.
+Since BPF/XDP on \ac{NFP} does not support reading and writing from the same DRAM location, the worst-case does not depend on any packet processed before or in parallel to the currently processed packet.
+We, therefore, do not consider sequences of packets, but only analyze a single run of the BPF/XDP program.
 
 \afblock{Packet Sizes}
 There are two different commonly used metrics for throughput capacity: packet rate and bit rate.
@@ -707,14 +855,14 @@ Our approach, therefore, produces valid intermediate results within a very short
 
 \begin{figure}[t]
 	\newlength{\nextpathwidth}
-	\setlength{\nextpathwidth}{\widthof{\small path}+0.2em}
+	\setlength{\nextpathwidth}{\widthof{\normalsize path}+0.6em}
 	\newlength{\yeswidth}
-	\setlength{\yeswidth}{\widthof{\small\emph{yes}}+0.2em}
+	\setlength{\yeswidth}{\widthof{\normalsize\emph{yes}}+0.6em}
 	\begin{tikzpicture}[
 			algonode/.style={
 				draw=black,
 				align=center,
-				font=\small,
+				font=\normalsize,
 				rounded corners=3pt,
 				outer sep=0.2em,
 			},
@@ -723,22 +871,22 @@ Our approach, therefore, produces valid intermediate results within a very short
 				draw=black,
 			},
 			steplabel/.style={
-				font=\small,
+				font=\normalsize,
 				align=left,
 				inner sep=0,
 			}
 		]
 
-		\node[algonode,fill=RWTHturkis!25] (enum) {incremental\\ordered\\enumeration};
-		\node[algonode,right=\nextpathwidth of enum.north east,anchor=north west,font=\small\itshape,fill=RWTHorange!25] (satcheck) {path\\satisfiable?};
-		\node[algonode,right=\yeswidth of satcheck.north east,anchor=north west,fill=RWTHmaigrun!25] (SSP) {slowest\\sat. path\\found};
+		\node[algonode,fill=RWTHturkis!25] (enum) {incremental\\ordered\\enumeration\vphantom{p}};
+		\node[algonode,right=\nextpathwidth of enum.north east,anchor=north west,font=\normalsize\itshape,fill=RWTHorange!25] (satcheck) {path\\satisfiable?\vphantom{p}};
+		\node[algonode,right=\yeswidth of satcheck.north east,anchor=north west,fill=RWTHmaigrun!25] (SSP) {slowest\\sat. path\\found\vphantom{p}};
 		\coordinate (left) at ($(SSP.north east)-(\columnwidth,0.6em)$);
 
 		\path (left) edge[stepedge] node[steplabel,below right=0.2em and 0em,pos=0] {NFP bytecode\\cost functions\\\smash{p}acket sizes} (left-|enum.west);
 		\path (enum.east|-satcheck) edge[stepedge] node[steplabel] {next\\[0.2em]path} (satcheck.west);
 		\path[stepedge] (satcheck.south) |- ($(enum.south east)+(0,0.6em)$);
-		\node[steplabel,anchor=west,font=\small\itshape] at ($(enum.south-|satcheck)+(0.2em,0.6em)$) {no};
-		\path (satcheck.east) edge[stepedge] node[steplabel,font=\small\itshape,above=0.2em] {yes} (satcheck-|SSP.west);
+		\node[steplabel,anchor=south west,font=\normalsize\itshape] at ($(satcheck|-enum.south)+(0.2em,0.6em)$) {no};
+		\path (satcheck.east) edge[stepedge] node[steplabel,font=\normalsize\itshape,above=0.2em] {yes} (satcheck-|SSP.west);
 	\end{tikzpicture}
 
 	\caption{Searching for the slowest satisfiable path.}
@@ -758,17 +906,17 @@ The resulting bit rates are determined at a later step~(\ref{subsec:multiple-ins
 
 In an ideal scenario, the SmartNIC manufacturer who has complete knowledge of the inner workings of the SmartNIC would provide a model which perfectly describes the throughput capacities.
 The documentation~\cite{reference-manual,joy-of-micro-c} of the used SmartNIC contains only incomplete execution timing data and no throughput model.
-We, therefore, performed measurements on the Netronome Agilio CX SmartNIC to build throughput heuristics of the relevant components.
+We, therefore, performed measurements on the Netronome Agilio CX SmartNIC to build throughput heuristics of the relevant parts.
 
-We identified two components with a throughput capacity which varies based on the executed instructions: the processing cores and the DRAM memory engine.
-Whenever only one of these components is overloaded, the other component will spend some of its time idling.
-The actual throughput capacity of a path is the minimum throughput capacity over all components.
-We therefore analyze a program's throughput capacity separately for each component and then use the minimum.
+We identified two NIC parts with a throughput capacity which varies based on the executed instructions: the processing cores and the DRAM memory engine.
+Whenever only one of these is overloaded, the other will spend some of its time idling.
+The actual throughput capacity of a path is the minimum throughput capacity over all parts.
+We therefore analyze a program's throughput capacity separately for each part and then use the minimum.
 Each instruction is therefore modeled by both a processing core execution time for the case that the processing cores are overloaded and a DRAM execution time for the case that the DRAM memory engine is overloaded.
-Our approach can be extended to handle more components, but candidates like the per-island SRAM did not show any bottleneck behavior and BPF/XDP programs do not have access to any of the additional NFP co-processors.
+Our approach can be extended to handle more parts, but candidates like the per-island SRAM did not show any bottleneck behavior and BPF/XDP programs do not have access to any of the additional NFP co-processors.
 
-Lastly, the NIC itself also has a fixed program-independent throughput capacity limit such as the maximum rate at which the MAC part of the NIC accepts packets or the maximum bit rate of the used Ethernet variant (2x40 GbE in our testbed).
-For a program to run with the maximum throughput, both the program's processing core throughput capacity and the program's DRAM throughput capacity need to be higher or equal than the fixed program-independent NIC limits.
+Lastly, the NIC also has a fixed program-independent throughput limits such as the maximum rate at which the MAC part of the NIC accepts packets or the maximum bit rate of the used Ethernet variant (2x40 GbE in our testbed).
+For a program to run with maximum throughput, both the program's processing core throughput capacity and the program's DRAM throughput capacity need to be higher or equal than the fixed program-independent NIC limits.
 
 We start with the processing core throughput heuristic for non-memory instructions followed by DRAM throughput and memory instruction timing.
 
@@ -780,21 +928,26 @@ Since programs are executed in parallel on many processing cores, the resulting 
 
 
 \afblock{Many-Core Parallelization}
-The Netronome Agilio CX executes XDP/BPF programs on 50~processing cores.
-To investigate the impact of parallelization we measure the throughput while varying the number of processing cores.
-We use programs which do not access any memory, since in this first step we only investigate the processing cores.
+The Netronome Agilio CX executes BPF/XDP programs on 50~processing cores.
+To investigate the impact of parallelization we measure the throughput while varying the number of processing cores by using multiple modified NIC firmware variants.
+We use BPF/XDP programs which do not access any memory, since in this first step we only investigate the processing cores.
 \ref{subsec:estimation-accuracy} has more details on how we generate huge numbers of identical packets to always trigger the same program path.
 
 \begin{figure}[t]
 	\includegraphics{plot/wpi}
+	\\[0.5em]
 
 	\caption{The throughput capacity when using different numbers of NIC cores is limited by the maximum packet rate of the NIC of \maclimit{}.
-	Below that, packet rates are proportional to the number of cores, small program: \mdata{wpi.drop}{b}{M2}/core with $R^2 = \mdata{wpi.drop}{Rsquared}{6}$; large program: \mdata{wpi.slow}{b}{k0}/core with $R^2 = \mdata{wpi.slow}{Rsquared}{6}$.
+	Below that, packet rates are proportional (orange lines) to the number of cores.
+	\begin{tabular}{r@{ }r}
+	fast program:&\mdata{wpi.drop}{b}{M2}/core with $R^2 = \mdata{wpi.drop}{Rsquared}{6}$\\
+	slow program:&\mdata{wpi.slow}{b}{M2}/core with $R^2 = \mdata{wpi.slow}{Rsquared}{6}$\\
+	\end{tabular}
 	}
 	\label{fig:wpi}
 \end{figure}
 
-\ref{fig:wpi} shows the resulting packet rates for two programs, a small program performing a small number of calculations for each packet and a larger program performing more calculations.
+\ref{fig:wpi} shows the resulting packet rates for two programs, a fast program performing few calculations on each packet and a slower program performing more calculations.
 As can be seen with the black bars showing the 99\% confidence intervals, there is only little variation between multiple runs of the same configuration.
 No configuration exceeds a throughput of \maclimit{}, which was confirmed by Netronome to be roughly the maximum rate at which the MAC part of the NIC can receive packets.
 Below this limit, the packet rate is strongly proportional to the number of cores, which can be seen by the fitted lines with a resulting $R^2$ close to $1$.
@@ -803,6 +956,7 @@ Since the throughput is proportional to the number of cores and the clock freque
 
 \afblock{Clock Cycles per Packet}
 The number of clock cycles that a processing core spends per packet is composed of the instructions executed inside the program and overhead in the firmware when moving from one packet to the next.
+Since Netronome provides a cycle accurate firmware simulator, we were confident that an accurate model of instructions costs is possible.
 The \ac{NFP} reference manual~\cite{reference-manual} states that most non-memory instructions take a single cycle.
 The cycle costs of a branch instruction is higher if the branch is taken, but does not depend on previous executions since the \ac{NFP} has no branch prediction.
 We confirmed and extended the cycle costs with microbenchmarks to build a cycle-accurate model of the relevant non-memory \ac{NFP} instructions.
@@ -811,9 +965,11 @@ To calculate the resulting throughput capacity, we additionally need the number 
 
 To quantify the per-packet firmware overhead we used the smallest BPF/XDP program, overloaded the NIC with packets, and measured the resulting packet rate.
 The NIC firmware~\cite{nic-firmware} however contains variable packet processing, as it parses multiple headers to assign packets from the same flow to the same host queue.
-Since queue selection is also exposed to BPF/XDP programs on NFP, this functionality can be moved to a program (or even be replaced by more advanced queue selection~\cite{smart-RSS}) for which we then can determine a throughput guarantee.
-We, therefore, removed the queue selection decision from the firmware and thereby obtained a fairly constant per-packet firmware overhead which we found to be independent of packet sizes and content.
-\footnote{All modifications will be open-sourced upon paper acceptance.} 
+Whenever a processing core processes a packet, it first selects a host queue for the packet and then calls the BPF/XDP program which can arbitrarily override the selected queue.
+Therefore, queue selection can safely be removed from the firmware, since the identical functionality can be implemented within a BPF/XDP program (or even be replaced by more advanced queue selection~\cite{smart-RSS}) for which we then can determine a throughput guarantee.
+As an alternative, we could have extracted the queue selection part from the firmware and include it in the program analysis.
+By removing the queue selection decision from the firmware, we obtained a fairly constant per-packet firmware overhead of approximately \unit[224]{cycles} which we found to be independent of packet sizes and content.
+\footnote{All modifications are open-sourced as described in Appendix~\ref{sec:artifacts}.} 
 The per-packet cycle overhead is then calculated by converting the measured packet rate into mean cycles per packet and subtracting the calculated cycle costs of our benchmark program.
 When combining this overhead with an instruction trace, we can calculate the throughput capacity.
 
@@ -828,10 +984,12 @@ The closed source variant of the NIC firmware~\cite{bpf-firmware} accesses the s
 Since raw memory instructions are easier to analyze, we modified the open source NIC firmware and the \ac{NFP} Linux kernel driver to expose the shared DRAM as raw memory through BPF array maps.
 More complex memory access schemes can then be implemented within BPF/XDP programs and will then be analyzed by our approach together with the rest of the program.
 
-Since the NIC's documentation contains only coarse memory latency information~\cite{joy-of-micro-c} and no memory throughput data, we instead derive a throughput capacity heuristic from measurements.
+The NIC's documentation contains only coarse memory latency information~\cite{joy-of-micro-c} and no memory throughput data.
+We instead derive a throughput capacity heuristic from measurements.
+Since BPF and NFP pointers always explicitly encode the targeted memory region in the memory hierarchy, per-island SRAM and shared-DRAM performance can be independently modelled.
 As stated before, we observed no bottleneck behavior on the per-island SRAM but a varying shared-DRAM throughput capacity which depends on the executed memory operation and the accessed memory locations.
 
-The observed memory throughput is lowest when spreading the accessed locations by no more then \unit[16]{byte} and increases by four times when spreading accesses over large ranges.
+The observed DRAM throughput is lowest when spreading the accessed locations by no more than \unit[16]{byte} and increases by four times when spreading accesses over large ranges.
 Since we determine throughput guarantees, we must analyze the worst-case which is the case were only a small range of memory is accessed.
 A factor of up to 4 may cause a huge underestimation of the actually achievable throughput and we are unable to analyze which memory access patterns a program may experience.
 However, our evaluation (\ref{subsec:estimation-accuracy}) shows a much smaller gap between estimated worst-case and measured throughput, since the analyzed programs repeatedly access the same memory locations when repeatedly receiving the same packet.
@@ -868,7 +1026,7 @@ However, reading from DRAM or SRAM pauses execution until the result is availabl
 Hyper-threading masks the throughput impact of waiting for a response since another instance of the same program is scheduled.
 This works well for a single memory access, but can still lead to all threads waiting, if all threads on a core issue memory requests within short succession.
 We found that the resulting throughput can be estimated well by a minimum number of clock cycles between two memory operations within an instruction trace.
-We empirically determined the minimum cycles between blocking memory instructions and found different values for per-island SRAM and shared DRAM access.
+We empirically determined the minimum cycles between blocking memory instructions and found different values for SRAM and DRAM access.
 
 Our processing core and DRAM throughput capacity heu-ristics are complete for all instructions issued by the BPF/XDP to \ac{NFP} compiler and can be used to determine the throughput capacity for all program paths.
 In the next step, we build upon these heuristics and use the derived cost functions to enumerate paths ordered by achievable bit rate or packet rate and identify or underestimate the \acl{SSP}.
@@ -911,7 +1069,7 @@ We continue describing how to transform a program into a graph suitable for this
 \label{subsec:cfg-preprocessing}
 
 \begin{figure}[t]
-	\newcommand{\linenumber}[2][10pt]{\hskip#1\llap{\scriptsize \lncolor{#2}\hskip5pt}}
+	\newcommand{\linenumber}[2][10pt]{\hskip#1\llap{\small \lncolor{#2}\hskip5pt}}
 	\newlength{\bbskip}
 	\setlength{\bbskip}{0.0em}
 	\newlength{\bbgap}
@@ -1053,15 +1211,15 @@ We continue describing how to transform a program into a graph suitable for this
 		\node[edge data branch] at (h3indent|-l2.south) {\costvector{1}{0}};
 		\node[edge data branch] at (h5indent|-l4.south) {\costvector{1}{0}};
 		\node[edge data jump] at (h6indent|-l5.south) {\costvector{1}{1}};
-		\node[edge data,rotate=90,anchor=north,font=\scriptsize,outer sep=0.2em] at ($(l6.west)!0.5!(l8.west)$) {\costvector{2}{0}};
-		\node[edge data ,anchor=south,yshift=-0.5em,xshift=-0.2em,font=\scriptsize] at (h7indent|-l8.north) {\costvector{1}{0}};
-		\node[edge data,anchor=north,yshift=0.2em,xshift=0.2em,font=\scriptsize] at ($(l7a.east)!0.5!(l7b.west)$) {\costvector{1}{0}};
-		\node[edge data,anchor=north,yshift=0.2em,xshift=-0.5em,font=\scriptsize] at ($(l7b.east)!0.5!(l7c.west)$) {\costvector{1}{0}};
-		\node[edge data jump,font=\scriptsize,xshift=-0.2em] at (h8indent|-l7c.south) {\costvector{1}{0}};
-		\node[edge data,anchor=south east,yshift=-0.2em,font=\scriptsize] at (l9.west|-l8b) {\costvector{1}{0}};
+		\node[edge data,rotate=90,anchor=north,font=\small] at ($(l6.west-|h1indent)!0.5!(l8.west-|h1indent)$) {\costvector{2}{0}};
+		\node[edge data ,anchor=south,yshift=-0.5em,xshift=-0.0em,font=\small] at (h7indent|-l8.north) {\costvector{1}{0}};
+		\node[edge data,anchor=north,yshift=0.2em,xshift=0.3em,font=\small] at ($(l7a.east)!0.5!(l7b.west)$) {\costvector{1}{0}};
+		\node[edge data,anchor=north,yshift=0.2em,xshift=-0.3em,font=\small] at ($(l7b.east)!0.5!(l7c.west)$) {\costvector{1}{0}};
+		\node[edge data jump,font=\small,xshift=-0.2em] at (h8indent|-l7c.south) {\costvector{1}{0}};
+		\node[edge data,anchor=south east,yshift=-0.2em,font=\small] at (l9.west|-l8b) {\costvector{1}{0}};
 
-		\node[legend,anchor=north east,size100] (legendA) at ($(l1.north-|l9.east)-(0.4em,0.4em)$) {\lstinline|pkt.size|\geq{} 100};
-		\node[legend,anchor=south east,size60,xshift=-1em] (legendB) at (legendA.south west) {\lstinline|pkt.size| \geq{} 60};
+		\node[legend,anchor=north east,size100] (legendA) at ($(l1.north-|l9.east)-(0.4em,0.4em)$) {\lstinline|pkt.size| \geq{} 100};
+		\node[legend,anchor=south east,size60,xshift=-1.5em] (legendB) at (legendA.south west) {\lstinline|pkt.size| \geq{} 60};
 		\node[legend,anchor=north east] (legendC) at ($(legendA.south east)-(0,0.4em)$) {\textit{cost vector}: \costvector{processing}{DRAM}};
 		\path[control flow,size100] ($(legendA.north west)-(0.4em,0)$) to ($(legendA.south west)-(0.4em,0)$);
 		\path[control flow,size60] ($(legendB.north west)-(0.4em,0)$) to ($(legendB.south west)-(0.4em,0)$);
@@ -1091,7 +1249,7 @@ Paths for either the processing cores or DRAM can then separately be enumerated 
 
 \afblock{Edge Costs}
 We use edge costs instead of node costs, since the number of processing cycles to execute a branch instruction depends on the branch result as can be seen at \lncolor2\parrow{}\lncolor3 and \lncolor2\parrow{}\lncolor4.
-This does however not yet suffice to have constant costs since our cost functions for SRAM and DRAM instructions depends on the number of cycles since the previous memory instruction.
+This does however not yet suffice to have constant costs since our cost functions for memory instructions depends on the number of cycles since the previous memory access.
 We overestimate the cycle costs for each edge according to the maximum possible with any path to this edge, which gives a valid underestimated throughput capacity.
 
 The preprocessed \ac{CFG} can be used to estimate a packet rate guarantee for either processing cores or DRAM.
@@ -1139,7 +1297,7 @@ In \ref{fig:cfg-example}, the edge \lncolor2\parrow{}\lncolor4 requires a packet
 In this example, the solid edges are used to enumerate \unit[100]{byte} paths and the dashed edges to enumerate \unit[60]{byte} paths.
 Edge \lncolor1\parrow{}\lncolor2 is needed for both \unit[60]{byte} and \unit[100]{byte}.
 
-Since we use static analysis to determine packet size requirements for edges, we have to underestimate them to produce valid lower bounds for the bit rate guarantee.
+Since we use static analysis to determine packet size requirements for edges, we have to underestimate them to get valid lower bounds for the bit rate guarantee.
 Therefore, a search instance for a particular \ac{MPS} may produce some paths which require a larger packet size.
 Using the smaller size still yields valid lower bounds and the bit rate guarantee is further improved by enumerating additional paths up to a bit rate which matches the actually larger \ac{MPS}.
 
@@ -1173,22 +1331,95 @@ We evaluate the estimation accuracy by measuring throughput with these example p
 \section{Evaluation}
 \label{sec:evaluation}
 
-The evaluation is based on a fully implemented prototype\footnote{The prototype will be open-sourced upon paper acceptance.} and analyzes real XDP/BPF programs.
-We use the Z3~\cite{z3} \ac{SMT} solver and enumerate batches of program paths to parallelize satisfiability checking onto CPU cores.
 We evaluate the estimation accuracy, the time to compute the throughput guarantees, some of the design choices, and use cases.
 
+\afblock{Implementation}
+Our prototype fully implements our approach, analyzes real BPF/XDP programs and is open source as described in the Appendix \ref{sec:artifacts}.
+We use the Z3~\cite{z3} \ac{SMT} solver and enumerate batches of program paths to parallelize satisfiability checking onto CPU cores.
+Unlike KLEE-based~\cite{klee} approaches such as CASTAN~\cite{castan}, BOLT~\cite{BOLT}, and SymPerf~\cite{symperf}, our implementation does not analyze LLVM bytecode.
+We instead choose to directly analyze \ac{NFP} bytecode, since LLVM bytecode lacks many important subtleties of the performance and behavior of the \ac{NFP}.
+
+\begin{table}
+	\caption{
+		Overview over the analyzed programs.
+	}
+	\label{tab:example-programs}
+	\newcommand{\progcol}[1]{%
+		\progname{#1}\progcite{#1}&
+		\proglang{#1}&
+		\mdata{rate.#1.k}{bottleneck}{}&
+		\progloops{#1}&
+		\mdata{#1}{instructions}{0}\\
+	}%
+	\newcommand{\multitab}[1]{%
+		\multicolumn{1}{l}{%
+			\setlength\tabcolsep{0pt}%
+			\begin{tabular}{l}%
+				#1%
+			\end{tabular}%
+		}%
+	}
+	\newcommand{\multitabc}[1]{%
+		\multicolumn{1}{l}{%
+			\setlength\tabcolsep{0pt}%
+			\begin{tabular}{c}%
+				#1%
+			\end{tabular}%
+		}%
+	}
+	\newcommand{\multitabr}[1]{%
+		\multicolumn{1}{r}{%
+			\setlength\tabcolsep{0pt}%
+			\llap{%
+			\begin{tabular}{c}%
+				#1%
+			\end{tabular}%
+			}%
+		}%
+	}
+	%\setlength\tabcolsep{4.9pt}%
+	\begin{tabular}{l@{ }cccr}
+		\toprule
+		\multitab{Analyzed\\Program}&
+		\multitabr{Lan-\\guage}&
+		\multitab{Bottleneck}&
+		\multitab{Loops}&
+		\multitabc{\# \ac{NFP}\\Instruc-\\tions}\\
+		\midrule
+		\progcol{xdp.switch}%
+		\progcol{xdp.cloudflare}%
+		\progcol{xdp.quic.lb}%
+		\progcol{xdp.quic.lb.ipv6.options}%
+		\progcol{xdp.alaw2ulaw}%
+		\progcol{xdp.alaw2ulaw.opt}%
+		\progcol{xdp.dns.cache}%
+		\progcol{xdp.count.min.5}%
+		\progcol{xdp.count.min.10}%
+		\progcol{xdp.count.min.15}%
+		\progcol{xdp.count.min.20}%
+		\progname{xdp.path.explosion}\progcite{xdp.path.explosion}&
+		\proglang{xdp.path.explosion}&
+		processing&
+		\progloops{xdp.path.explosion}&
+		\mdata{xdp.path.explosion}{instructions}{0}\\
+		\bottomrule
+	\end{tabular}
+\end{table}
+
 \afblock{Analyzed Programs}
-We estimate throughput and measure throughput on real XDP/BPF programs.
-The programs shown in \ref{tab:estimation-accuracy} are a mix of programs well-established in research (the parser from switch.p4~\cite{p4c} compiled to BPF with p4c-xdp~\cite{p4c-xdp}), concepts derived from documentation (Cloudflare DoS~\cite{cloudflare}, QUIC LB~\cite{quic-lb}) and new programs (RTP a\shortrightarrow{}μ-law~\cite{rfc7655,g.711}, DNS Cache~\cite{rfc1035}, Count-Min~\cite{count-min-sketch}, Path Explosion).
-Some programs contain bounded loops; the IPv6 variant of the QUIC load-balancer loops over IPv6 options, the RTP a\shortrightarrow{}μ-law transcodes up to 160 bytes of audio payload, and the Count-Min sketch loops over a configurable number of hash functions.
-Other programs are designed to have their bottleneck at the memory engine; both DNS Cache and Count-Min perform many DRAM lookups and updates.
+We estimate and measure throughput on real BPF/XDP programs shown in \ref{tab:example-programs}.
+The number of \ac{NFP} instructions cannot be directly translated to throughput, since not every program path triggers each instructions, some of the programs have loops, and the individual instructions incur non-uniform processing and DRAM costs.
+Most programs are written in C, whereas \progname{xdp.switch} is implemented in the P4 language and preprocessed by p4c-xdp~\cite{p4c-xdp} which produces BPF/XDP-compatible C.
+We removed everything but the parser from the original switch.p4~\cite{p4c} and reduced the nesting depth for some protocols in order to fit the program onto the \ac{NFP}.
+The \progname{xdp.cloudflare} program filters unwanted packets during a DoS attack and is reconstructed from code~\cite{cloudflare} and tools~\cite{bpftools} published by Cloudflare.
+Most other programs were created by different team members using existing documentation.
+The QUIC LB computes on the QUIC connection id as described in an Internet draft~\cite{quic-lb}, the \progname{xdp.alaw2ulaw} transcodes up to \unit[160]{bytes} of audio payload according to the standards\progcite{xdp.alaw2ulaw}, the \progname{xdp.dns.cache} responds with precomputed standard-compliant\progcite{xdp.dns.cache} DNS responses, and the Count-Min sketches~\cite{count-min-sketch} counts the number of UDP and TCP flows, using a varying number of hash functions.
 Finally, we created a program to resist our analysis with \unit[$2^{64}$]{unsatisfiable paths} which are slower than the \ac{SSP}.
 
-Some of the analyzed programs can exceed the maximum achievable packet rate of the NICs MAC part of \maclimit{} when executed on all 50~processing cores.
+Some of the analyzed programs can exceed the maximum achievable packet rate of the NICs MAC part of \maclimit{} (\unit[26 G]{Bit/s} at \unit[60]{byte} packet size) when executed on all 50~processing cores.
 Although this is usually a desired result when developing a program, it limits our ability to evaluate the estimation accuracy, as we can no longer measure the program's throughput capacity.
 For this evaluation, we, therefore, estimate and measure throughput capacities of processing core limited programs at 5 processing cores and then scale these numbers to 50 processing cores.
 We still estimate and measure DRAM throughput limited programs at 50 processing cores at the cost of being unable to measure all satisfiable paths through these programs.
-
 
 
 \subsection{Estimation Accuracy}
@@ -1199,34 +1430,29 @@ To assess the accuracy of our estimates, we measure the throughput of individual
 \afblock{Testbed}
 We use a Barefoot Tofino Switch to generate huge numbers of identical packets, similar as proposed by P4pktgen~\cite{p4pktgen}.
 Each program path is measured separately by repeating a single packet which always triggers this path.
-For most program paths, the throughput capacity of a single path can be measured by sending more packets than the NIC can handle.
+For most program paths, the throughput capacity of a single path can be measured by filling 2x40~GbE with packets back to back.
 We then determine the rate of actually processed packets by reading NIC counters at fixed intervals over \unit[30]{s} runs and calculating 99\% confidence intervals.
-Due to a bug in the MAC part of the NIC firmware (confirmed by the vendor) we had to measure some of the program paths differently.
-For these program paths, we shape the rate of transmitted packets to determine the maximum rate the NIC can handle without breaking down.
 
-\afblock{Per-Path Accuracy}
-To asses the limits on our estimation accuracy, we measure the throughput of many paths.
-We, therefore, enumerate not only the \ac{SSP} but continue enumerating slower paths for one hour, thereby discovering a total of \removeunit{\mdata{rate.all}{sum.measured}{0}} measurable paths.
-The estimate matches the measurement for \mdata{rate.all}{rel.correct}{.1} of paths, underestimates \mdata{rate.all}{rel.error.p}{.1} of paths and is too high for \mdata{rate.all}{rel.error.n}{.1} of paths.
-No  processing- and memory-bottlenecked paths is underestimated by more than \mdata{rate.all}{rel.max.error.proc.p}{.1} and \mdata{rate.all}{rel.max.error.dram.p}{.1}.
-For the paths with a too high estimate, no estimate exceeds the measured throughput by more than \mdata{rate.all}{rel.max.error.n}{.1}, possibly caused by inaccuracies in our per-path throughput heuristic.
-Despite our per-path throughput heuristic being based on measurements, it still produces mostly accurate and tight lower throughput bounds.
+Due to a bug in the MAC part of the NIC firmware (confirmed by Netronome) we had to measure some of the program paths differently.
+When a program has a throughput capacity between \unit[\sim36 M]{pkts/s} and \unit[\sim50 M]{pkts/s} (but not above \unit[\sim50 M]{pkts/s}) and is overloaded with packets, the NIC accepts packets at a rate of only \unit[\sim30 M]{pkts/s}.
+Since the NIC processes packet rates up to the throughput capacity of the program path, as long as the program is not overloaded, we measure these paths by shaping the rate of transmitted packets to determine the maximum rate the NIC can handle without breaking down.
 
 \begin{table}[t]
+	\begin{DIFnomarkup}
 	\caption{
 		The throughput guarantees are improved by up to \mdata{numbers.all}{improve.rate}{.0} by identifying the \ac{SSP} and increase by up to \mdata{rate.all}{rel.prediction.error.max}{.0} by measuring identified paths. The estimated slowest paths are correct with an error of at most \mdata{rate.all}{rel.prediction.error.min.p}{.1}.
 	}
 	\label{tab:estimation-accuracy}
-	\newcommand{\ratecolx}[6]{%
-		#1&
-		\small{\removeunit{\mdata{rate.#2}{early.rate}{#3}}}&
-		\textbf{\mdata{numbers.#2}{improve.rate}{.0}}&
-		\small{\removeunit{\mdata{rate.#2}{first.rate}{#4}}}&
-		\textbf{\mdata{rate.#2}{prediction.error}{#6}}&
-		\small{\removeunit{\mdata{rate.#2}{measured.worst.rate.mean}{#5}}}&
-		\scriptsize{$\pm$\removeunit{\mdata{rate.#2}{measured.worst.rate.c99diff}{G2}}}\\%
+	\newcommand{\ratecolx}[5]{%
+		\progname{#1}&
+		\normalsize{\removeunit{\mdata{rate.#1.k}{early.rate}{#2}}}&
+		\textbf{\mdata{numbers.#1.k}{improve.rate}{.0}}&
+		\normalsize{\removeunit{\mdata{rate.#1.k}{first.rate}{#3}}}&
+		\textbf{\mdata{rate.#1.k}{prediction.error}{#5}}&
+		\normalsize{\removeunit{\mdata{rate.#1.k}{measured.worst.rate.mean}{#4}}}&
+		\small{$\pm$\removeunit{\mdata{rate.#1.k}{measured.worst.rate.c99diff}{G2}}}\\%
 	}
-	\newcommand{\ratecol}[3]{\ratecolx{#1}{#2}{#3}{#3}{#3}{.1}}
+	\newcommand{\ratecol}[2]{\ratecolx{#1}{#2}{#2}{#2}{.1}}
 	\newcommand{\multitab}[1]{%
 		\multicolumn{1}{l}{%
 			\setlength\tabcolsep{0pt}%
@@ -1263,8 +1489,8 @@ Despite our per-path throughput heuristic being based on measurements, it still 
 			}%
 		}%
 	}
-	\setlength\tabcolsep{4.5pt}%
-	\begin{tabular}{l@{ }rr@{ }rr@{ }r@{}r}
+	\setlength\tabcolsep{5.0pt}%
+	\begin{tabular}{l@{~~}rr@{ }rr@{ }r@{ }r}
 		\toprule
 		\multitab{Analyzed\\Program}&
 		\multitabr{Naïve\\Bound\\{[\unit{Bit/s}]}}&
@@ -1272,24 +1498,33 @@ Despite our per-path throughput heuristic being based on measurements, it still 
 		&
 		\multitabtwor{Slowest\\Measured\\Path {[\unit{Bit/s}]}}\\
 		\midrule
-		\ratecol{switch.p4 \small{(parser)}}{xdp.switch.k}{G1}%
-		\ratecol{Cloudflare DoS}{xdp.cloudflare.k}{G1}%
-		\ratecol{QUIC LB \small{(IPv4)}}{xdp.quic.lb.k}{G1}%
-		\ratecol{QUIC LB \small{(IPv6)}}{xdp.quic.lb.ipv6.options.k}{G1}%
-		\ratecol{RTP a\shortrightarrow{}μ-law}{xdp.alaw2ulaw.k}{G2}%
-		%\ratecol{RTP a\shortrightarrow{}μ-law \small{(opt)}}{xdp.alaw2ulaw.opt.k}{G2}%
-		\ratecolx{DNS Cache}{xdp.dns.cache.k}{G1}{G1}{G1}{.1}%
-		\ratecol{Count-Min \small{(5)}}{xdp.count.min.5.k}{G1}%
-		%\ratecol{Count-Min \small{(10)}}{xdp.count.min.10.k}{G1}%
-		%\ratecol{Count-Min \small{(15)}}{xdp.count.min.15.k}{G1}%
-		\ratecol{Count-Min \small{(20)}}{xdp.count.min.20.k}{G1}%
-		Path Explosion &
+		\ratecol{xdp.switch}{G1}%
+		\ratecol{xdp.cloudflare}{G1}%
+		\ratecol{xdp.quic.lb}{G1}%
+		\ratecol{xdp.quic.lb.ipv6.options}{G1}%
+		\ratecol{xdp.alaw2ulaw}{G2}%
+		\ratecol{xdp.alaw2ulaw.opt}{G2}%
+		\ratecolx{xdp.dns.cache}{G1}{G1}{G1}{.1}%
+		\ratecol{xdp.count.min.5}{G1}%
+		\ratecol{xdp.count.min.10}{G1}%
+		\ratecol{xdp.count.min.15}{G1}%
+		\ratecol{xdp.count.min.20}{G1}%
+		\progname{xdp.path.explosion}&
 		{\small{\removeunit{\mdata{rate.xdp.path.explosion.k}{early.rate}{G1}}}}&
 		&--\phantom{G}&
 		&--\phantom{G}\\
 		\bottomrule
 	\end{tabular}
+	\end{DIFnomarkup}
 \end{table}
+
+\afblock{Per-Path Accuracy}
+To asses the limits on our estimation accuracy, we measure the throughput of many paths.
+We, therefore, enumerate not only the \ac{SSP} but continue enumerating slower paths for one hour, thereby discovering a total of \removeunit{\mdata{rate.all}{sum.measured}{0}} measurable paths.
+The estimate matches the measurement for \mdata{rate.all}{rel.correct}{.1} of paths, underestimates \mdata{rate.all}{rel.error.p}{.1} of paths and is too high for \mdata{rate.all}{rel.error.n}{.1} of paths.
+No  processing- and memory-bottlenecked paths is underestimated by more than \mdata{rate.all}{rel.max.error.proc.p}{.1} and \mdata{rate.all}{rel.max.error.dram.p}{.1}.
+For the paths with a too high estimate, no estimate exceeds the measured throughput by more than \mdata{rate.all}{rel.max.error.n}{.1}, possibly caused by inaccuracies in our per-path throughput heuristic.
+Despite our per-path throughput heuristic being based on measurements, it still produces mostly accurate and tight lower throughput bounds.
 
 \afblock{Slowest Satisfiable Path}
 We establish throughput guarantees for programs by identifying the \ac{SSP}.
@@ -1308,44 +1543,37 @@ Satisfiability checking of paths has the potential of significantly improving th
 
 \subsection{Analysis Time}
 
-For a useful approach, analysis results have to be computed within a reasonable time, even when path explosion happens.
-
-\afblock{Analysis Setup}
-We executed our prototype on a desktop computer with an Intel Core i7-7700 CPU with 4 cores (8 threads) and \unit[16 GiB] of RAM.
-Every program analysis was repeated over \unit[20]{runs} with non-terminating runs being aborted after \unit[1]{hour}.
-The results of our analysis time evaluation are realistic since we fully implemented the approach as a working prototype, ran this prototype on real programs, and used a desktop computer with typical performance characteristics.
-
 \begin{table}[t]
 	\caption{
 		The time it takes to calculate naïve and worst-path throughput guarantees compared to the time it takes to enumerate and check all possible paths.
 	}
 	\label{tab:analysis-times}
-	\newcommand{\ratecolx}[8]{%
-		#1&
-		\textbf{\mdata{numbers.#2}{early.time.mean.s}{1}}&
-		\scriptsize{$\pm$\mdata{numbers.#2}{early.time.c99diff.ms}{0}}&
-		\textbf{\mdata{numbers.#2}{first.time.mean.#5}{#3}}&
-		\scriptsize{$\pm$\mdata{numbers.#2}{first.time.c99diff.ms}{0}}&
-		\textbf{\mdata{numbers.#2}{total.time.mean.#6}{#4}}&
-		\scriptsize{$\pm$\mdata{numbers.#2}{total.time.c99diff.#8}{#7}}\\%
+	\newcommand{\timecolx}[7]{%
+		\progname{#1}&
+		\textbf{\mdata{numbers.#1.k}{early.time.mean.s}{1}}&
+		\small{$\pm$\mdata{numbers.#1.k}{early.time.c99diff.ms}{0}}&
+		\textbf{\mdata{numbers.#1.k}{first.time.mean.#4}{#2}}&
+		\small{$\pm$\mdata{numbers.#1.k}{first.time.c99diff.ms}{0}}&
+		\textbf{\mdata{numbers.#1.k}{total.time.mean.#5}{#3}}&
+		\small{$\pm$\mdata{numbers.#1.k}{total.time.c99diff.#7}{#6}}\\%
 	}
-	\newcommand{\ratecolm}[5]{%
-		#1&
-		\textbf{\mdata{numbers.#2}{early.time.mean.s}{1}}&
-		\scriptsize{$\pm$\mdata{numbers.#2}{early.time.c99diff.ms}{0}}&
-		\textbf{\mdata{numbers.#2}{first.time.mean.#5}{#3}}&
-		\scriptsize{$\pm$\mdata{numbers.#2}{first.time.c99diff.ms}{0}}&
-		\multicolumn{2}{c}{\textbf{\mdata{numbers.#2}{min.time.h}{0}}}\\%
+	\newcommand{\timecolm}[4]{%
+		\progname{#1}&
+		\textbf{\mdata{numbers.#1.k}{early.time.mean.s}{1}}&
+		\small{$\pm$\mdata{numbers.#1.k}{early.time.c99diff.ms}{0}}&
+		\textbf{\mdata{numbers.#1.k}{first.time.mean.#4}{#2}}&
+		\small{$\pm$\mdata{numbers.#1.k}{first.time.c99diff.ms}{0}}&
+		\multicolumn{2}{c}{\textbf{\mdata{numbers.#1.k}{min.time.h}{0}}}\\%
 	}
-	\newcommand{\ratecolo}[4]{%
-		#1&
-		\textbf{\mdata{numbers.#2}{early.time.mean.s}{1}}&
-		\scriptsize{$\pm$\mdata{numbers.#2}{early.time.c99diff.ms}{0}}&
-		\textbf{\mdata{numbers.#2}{first.time.mean.#4}{#3}}&
-		\scriptsize{$\pm$\mdata{numbers.#2}{early.time.c99diff.ms}{0}}&
-		\multicolumn{2}{c}{\textbf{\mdata{numbers.#2}{min.time.m}{0}}}\\%
+	\newcommand{\timecolo}[3]{%
+		\progname{#1}&
+		\textbf{\mdata{numbers.#1.k}{early.time.mean.s}{1}}&
+		\small{$\pm$\mdata{numbers.#1.k}{early.time.c99diff.ms}{0}}&
+		\textbf{\mdata{numbers.#1.k}{first.time.mean.#3}{#2}}&
+		\small{$\pm$\mdata{numbers.#1.k}{early.time.c99diff.ms}{0}}&
+		\multicolumn{2}{c}{\textbf{\mdata{numbers.#1.k}{min.time.m}{0}}}\\%
 	}
-	\newcommand{\ratecol}[2]{\ratecolx{#1}{#2}{1}{1}{s}{s}{0}{ms}}
+	\newcommand{\timecol}[1]{\timecolx{#1}{1}{1}{s}{s}{0}{ms}}
 	\newcommand{\multitab}[1]{%
 		\multicolumn{1}{l}{%
 			\setlength\tabcolsep{0pt}%
@@ -1362,43 +1590,56 @@ The results of our analysis time evaluation are realistic since we fully impleme
 			\end{tabular}%
 		}
 	}
-	%\setlength\tabcolsep{2.1pt}%
-	\begin{tabular}{lr@{}rr@{}rr@{}r}
+	\begin{DIFnomarkup}
+	\setlength\tabcolsep{4.8pt}%
+	\begin{tabular}{lr@{ }rr@{ }rr@{ }r}
 		\toprule
 		\multitab{Analyzed\\Program}&
 		\multitabtwo{Naïve\\Bound}&
 		\multitabtwo{Slowest\\Sat. Path}&
 		\multitabtwo{All Sat.\\Paths}\\
 		\midrule
-		\ratecolx{switch.p4 \small{(parser)}}{xdp.switch.k}{0}{0}{s}{s}{0}{ms}%
-		\ratecol{Cloudflare DoS}{xdp.cloudflare.k}%
-		\ratecol{QUIC LB \small{(IPv4)}}{xdp.quic.lb.k}%
-		\ratecolm{QUIC LB \small{(IPv6)}}{xdp.quic.lb.ipv6.options.k}{0}{0}{s}%
-		\ratecolo{RTP a\shortrightarrow{}μ-law}{xdp.alaw2ulaw.k}{0}{s}%
-		%\ratecolm{RTP a\shortrightarrow{}μ-law \small{(opt)}}{xdp.alaw2ulaw.opt.k}{0}{0}{s}%
-		\ratecolx{DNS Cache}{xdp.dns.cache.k}{0}{0}{s}{m}{1}{s}%
-		\ratecol{Count-Min \small{(5)}}{xdp.count.min.5.k}%
-		%\ratecol{Count-Min \small{(10)}}{xdp.count.min.10.k}%
-		%\ratecolx{Count-Min \small{(15)}}{xdp.count.min.15.k}{1}{0}{s}{s}{1}{s}%
-		\ratecolx{Count-Min \small{(20)}}{xdp.count.min.20.k}{1}{0}{s}{m}{1}{s}%
-		Path Explosion&
+		\timecolx{xdp.switch}{0}{0}{s}{s}{0}{ms}%
+		\timecol{xdp.cloudflare}%
+		\timecol{xdp.quic.lb}%
+		\timecolm{xdp.quic.lb.ipv6.options}{0}{0}{s}%
+		\timecolo{xdp.alaw2ulaw}{0}{s}%
+		\timecolm{xdp.alaw2ulaw.opt}{0}{0}{s}%
+		\timecolx{xdp.dns.cache}{0}{0}{s}{m}{1}{s}%
+		\timecol{xdp.count.min.5}%
+		\timecol{xdp.count.min.10}%
+		\timecolx{xdp.count.min.15}{1}{0}{s}{s}{1}{s}%
+		\timecolx{xdp.count.min.20}{1}{0}{s}{m}{1}{s}%
+		\progname{xdp.path.explosion}&
 		\textbf{\mdata{numbers.xdp.path.explosion.k}{early.time.mean.s}{1}}&
-		\scriptsize{$\pm$\mdata{numbers.xdp.path.explosion.k}{early.time.c99diff.ms}{0}}&
+		\small{$\pm$\mdata{numbers.xdp.path.explosion.k}{early.time.c99diff.ms}{0}}&
 		\multicolumn{2}{c}{\textbf{\mdata{numbers.xdp.path.explosion.k}{min.first.time.m}{0}}}&
 		\multicolumn{2}{c}{\textbf{\mdata{numbers.xdp.path.explosion.k}{min.time.m}{0}}}\\%
 		\bottomrule
 	\end{tabular}
+	\end{DIFnomarkup}
 \end{table}
+
+For a useful approach, analysis results have to be computed within a reasonable time, even when path explosion happens.
+
+\afblock{Analysis Setup}
+We executed our prototype on a desktop computer with an Intel Core i7-7700 CPU with 4 cores (8 threads) and \unit[16 GiB] of RAM.
+Every program analysis was repeated over \unit[20]{runs} with non-terminating runs being aborted after one hour.
+The results of our analysis time evaluation are realistic since we fully implemented the approach as a working prototype, ran this prototype on real programs, and used a typical desktop computer.
 
 \afblock{Analysis Time}
 As can be seen in \ref{tab:analysis-times}, the naïve bound is computed on all example programs within \mdata{numbers.all}{early.meanmax.s}{1} and except for the Path Explosion program, the \ac{SSP} is found within \mdata{numbers.all}{first.meanmax.s}{0}.
 Analyzing a SmartNIC program takes only little time, enabling developers to regularly check throughput guarantees.
 The analysis times are so short, it is even feasible to integrate our prototype into regularly executed regression tests.
 
-A major advantage of our approach is the ordered enumeration instead of enumerating all paths.
-For many programs, we were unable to enumerate all satisfiable paths within an hour or because we ran out of memory before that.
-Even when it is feasible to enumerate all paths, the time to enumerate only the \ac{SSP} is significantly lower.
+A major advantage of our approach is the ordered enumeration of program paths.
+Exhaustive symbolic execution approaches such as BOLT~\cite{BOLT} and SymPerf~\cite{symperf} always analyze all paths through a program, whereas our approach only analyzes the slowest paths.
+For comparison with such approaches, we do not stop on the \ac{SSP} but continue enumerating all satisfiable paths as shown in \ref{tab:analysis-times}.
+When enumerating all paths, the analysis time increases by a factor of up to \mdata{numbers.all}{factor.all.path.time}{0} and becomes infeasible for some programs within an hour or because we ran out of memory before that.
+Our approach, therefore, provides significantly lower analysis times.
+By focusing on only the slowest paths, we enable the analysis of many programs which otherwise would have too many paths to analyze.
 Note that enumerating additional paths or directly estimating a programmer-defined path is possible and may give further insights.
+Incremental sorted path enumeration identifies the \ac{SSP} in significantly shorter time compared to exhaustive symbolic execution.
 
 \afblock{Path Explosion}
 On the Path Explosion program, our prototype checked {\renewcommand{\geq}[0]{}\mdata{numbers.xdp.path.explosion.k}{min.unsatisfiable}{0}}s before running out of memory without having discovered a single satisfiable path.
@@ -1406,36 +1647,23 @@ However, the naïve bound, which is a valid throughput guarantee, can always be 
 
 
 \begin{figure}[t]
-	\subcaptionbox{QUIC LB \small{(IPv6)}}[0.5\columnwidth][c]{%
-	\includegraphics{plot/progress-xdp-quic-lb-ipv6-options}%
+	\subcaptionbox{\progname{xdp.quic.lb.ipv6.options}}[0.5\columnwidth][c]{%
+		\includegraphics{plot/progress-xdp-quic-lb-ipv6-options}%
 	}%
-	\subcaptionbox{DNS Cache}[0.5\columnwidth][c]{%
-	\includegraphics{plot/progress-xdp-dns-cache}%
+	\subcaptionbox{\progname{xdp.dns.cache}}[0.5\columnwidth][c]{%
+		\includegraphics{plot/progress-xdp-dns-cache}%
 	}
-	\subcaptionbox{switch.p4 \small{(parser)}}[0.5\columnwidth][c]{%
-	\includegraphics{plot/progress-xdp-switch}%
+	\subcaptionbox{\progname{xdp.switch}}[0.5\columnwidth][c]{%
+		\includegraphics{plot/progress-xdp-switch}%
 	}%
 	\subcaptionbox{Path Explosion}[0.5\columnwidth][c]{%
-	\begin{tikzpicture}[inner sep=0,spy using outlines=
-		{circle, magnification=5, connect spies,
-		every spy on node/.append style={RWTHrot,thin},
-		every spy in node/.append style={RWTHrot,thick},
-		spy connection path={\draw[RWTHrot] (tikzspyonnode) -- (tikzspyinnode);}}]
-		\node[anchor=south west] {\includegraphics[page=1]{plot/progress-xdp-path-explosion}};
-		\spy [size=0.75cm] on (1.9cm,2.18cm)
-			in node[fill=white] at (3cm,1.6cm);
-
-		\node[circle,draw=RWTHrot,minimum width=0.75cm/5,thin] (Aon) at (1.48cm,2.18cm) {};
-		\node[circle,draw=RWTHrot,minimum width=0.75cm,thick,fill=white] (Ain) at (2cm,1.6cm) {};
-		\draw[RWTHrot] (Aon) edge (Ain);
-		\begin{scope}[shift=($(Ain)-5*(Aon)$)]
-			\clip (Ain) circle (0.75cm/2);
-			\node[anchor=south west] {\includegraphics[page=2,scale=5]{plot/progress-xdp-path-explosion}};
-		\end{scope}
-	\end{tikzpicture}%
+		\begin{spygraphics}{plot/progress-xdp-path-explosion}
+			\spyon{1.84cm,2.18cm}{5}{3cm,1.6cm}{0.75cm}
+			\spyon{1.42cm,2.18cm}{5}{2cm,1.6cm}{0.75cm}
+		\end{spygraphics}
 	}
 	\caption{%
-	The throughput guarantee improves until a satisfiable path is found or the the analysis is aborted.
+	The throughput guarantee improves until a satisfiable path is found (a-c) or the the analysis is aborted (d).
 	}
 	\label{fig:progress}%
 \end{figure}
@@ -1443,8 +1671,9 @@ However, the naïve bound, which is a valid throughput guarantee, can always be 
 \afblock{Intermediate Results}
 In case it takes too long to identify the \ac{SSP}, ordered enumeration produces valid intermediate results for the throughput guarantee.
 Each plot in \ref{fig:progress} shows one analysis run where a first throughput guarantee is established through the naïve bound and then improved until the \ac{SSP} is found or the analysis is aborted.
-If for example, the QUIC LB {\small(IPv6)} program needs to process \unit[25]{GBit/s}, the analysis can already be stopped after \mdata{progress.xdp.quic.lb.ipv6.options.k}{achieve.25000000000}{1} instead of \mdata{progress.xdp.quic.lb.ipv6.options.k}{achieve.first}{1}.
+If for example, the \progname{xdp.quic.lb.ipv6.options} program needs to process \unit[25]{GBit/s}, the analysis can already be stopped after \mdata{progress.xdp.quic.lb.ipv6.options.k}{achieve.25000000000}{1} instead of \mdata{progress.xdp.quic.lb.ipv6.options.k}{achieve.first}{1}.
 There is however no guarantee that a useful intermediate result is produced in a significantly shorter time, as can be seen with the Path Explosion program.
+The ability to produce intermediate results before identifying the \ac{SSP} is a direct result of our choice to perform incremental ordered enumeration.
 
 To summarize, our prototype finds the \ac{SSP} within minutes on all useful example programs and yields intermediate results before that.
 In case the \ac{SSP} cannot be found, the naïve lower bound and additional intermediate results still produce valid throughput guarantees for any program.
@@ -1457,14 +1686,16 @@ The analysis time is influenced by several design choices.
 
 \afblock{Satisfiability Checking}
 Unlike our approach, symbolic execution checks the satisfiability each time the searcher crosses a branch instruction.
-We only check the satisfiability of \emph{completed} paths ordered by throughput capacity to avoid costly checking of fast paths.
-For comparison, we modified our prototype to perform checks on each branch.
-As shown in \ref{tab:design-choices}, the time to find the \ac{SSP} increases on our example programs by at least a factor of \mdata{compare.all.k.kFcheck.each.branch}{factor.first.time.min}{2} and for some programs increases the time from previously minutes to beyond \unit[1]{hour}, confirming our choice of reducing the checks.
+We only check the satisfiability of \emph{completed} paths ordered by throughput capacity to avoid any checks on fast paths.
+For comparison, we modified our prototype to perform checks on each branch and repeated the search for the \ac{SSP} on all example programs except Path Explosion.
+Performing an \ac{SMT} check on each branch increased the number of required \ac{SMT} checks by a factor of up to \mdata{compare.all.k.kFcheck.each.branch}{factor.first.sat.checks.max}{1} and increases the CPU time spent in the Z3 \ac{SMT} checker by a factor of up to \mdata{compare.all.k.kFcheck.each.branch}{factor.first.z3cputime.max}{1}.
+The impact on the overall analysis time is shown in \ref{tab:design-choices}.
+The time to find the \ac{SSP} increases on the example programs by at least a factor of \mdata{compare.all.k.kFcheck.each.branch}{factor.first.time.min}{2} and for some programs increases the time from previously minutes to beyond \unit[1]{hour}, confirming the advantage of our choice over symbolic execution- and KLEE-based approaches (\eg{} CASTAN~\cite{castan}, BOLT~\cite{BOLT}, SymPerf~\cite{symperf}).
 
 \begin{table}
 	\caption{
-		Minimum and maximum change over the analyzable examples.
-		Higher numbers are slower.
+		Range of change in analysis time,
+		$> {\scriptstyle\times}\,1.00$ is slower.
 	}
 	\label{tab:design-choices}
 	\let\oldtimes\times
@@ -1484,7 +1715,7 @@ As shown in \ref{tab:design-choices}, the time to find the \ac{SSP} increases on
 			}%
 		}
 	}
-	\setlength\tabcolsep{8.6pt}%
+	\setlength\tabcolsep{10pt}%
 	\begin{tabular}{lr@{ }c@{ }l}
 		\toprule
 		\multicolumn{1}{l}{Alternative Implementation}&
@@ -1524,7 +1755,7 @@ Packet rate analysis can indeed be significantly faster, but this is not the cas
 Our approach can have additional uses while developing a SmartNIC program.
 
 \afblock{Program Optimization}
-We were unsatisfied with the bit rate of the RTP a\shortrightarrow{}μ-law transcoder.
+We were unsatisfied with the bit rate of the \progname{xdp.alaw2ulaw} transcoder.
 Upon inspecting where the \ac{SSP} spends most of its execution time, we were able to create a program variant with identical behavior but a \mdata{compare.xdp.alaw2ulaw.k.opt.k}{improve.first.bitrate}{.0} higher bit rate.
 Our approach, therefore, can be used as a tool to aid the optimization of programs, although this still requires human effort.
 
@@ -1546,39 +1777,61 @@ A developer of such a program can use our approach to analyze the accuracy vs. t
 
 Our approach works quite well, but can still be improved.
 
-\afblock{Analysis Time}
+\afblock{Search Strategy}
 The time to find the \ac{SSP} is dominated by the work of the satisfiability checker.
 Improvements in the search strategy should, therefore, focus on reducing the number of satisfiability checks.
-This could be achieved by reusing satisfiability results for similar paths or reducing the number of to-be-checked paths.
+This may be achieved by reusing satisfiability results for similar paths or reducing the number of to-be-checked paths.
 Especially, inaccurate minimum packet size estimates may result in incorrect ordering of paths and therefore too many satisfiability checks.
-Replacing the static analysis of packet size requirements may therefore drastically improve the analysis time for some programs.
+Replacing the static analysis of packet size requirements may therefore improve the analysis time for some programs.
 
-\afblock{Higher Throughput Guarantees}
-Although our throughput capacity estimates are quite close to our measurements, the estimates will sometimes be much lower than the real throughput.
-We assume a worst-case DRAM access pattern (\ref{subsec:memory-access}), but we are unable to analyze if a path can experience such a bad access pattern and our generated example packets sometimes do not match this bad access pattern.
-The throughput guarantees could, therefore, be further improved by analyzing programs for their accessed DRAM locations.
-
+\afblock{Packet Sizes}
 We analyze for minimum packet sizes, but real packets will often be larger.
 Since our packet size analysis is based on accessed packet memory, typical packet payloads that are forwarded but not accessed, are ignored.
 Better incorporating actual or typical packet sizes might lead to throughput guarantees which are closer to the actual throughput.
 
-\afblock{Generalization}
+\afblock{DRAM Access Patterns}
+Although our throughput capacity estimates are close to our measurements, the estimates will sometimes be much lower than the real throughput.
+We assume a worst-case DRAM access pattern (\ref{subsec:memory-access}), but we are unable to analyze if a path can experience such a bad access pattern and our generated example packets sometimes do not match this bad access pattern.
+The throughput guarantees could, therefore, be further improved by analyzing programs for their accessed DRAM locations.
+
+\afblock{Stateful Programs}
+BPF/XDP on NFP currently does not support programs that modify the program-readable permanent state.
+Our program analysis can be easily extended to support reading and writing the same DRAM location but may result in an underestimation which is far off from the actual worst-case.
+Due to the parallelized packet processing, memory content can change in between two reads or a write followed by a read from the same memory location.
+Additionally, in case a single program path reads and writes the same memory location, this path may not be triggerable multiple times in direct succession.
+Therefore, the actual worst-case throughput may not be the result of always triggering a single worst-case program path, but rather a sequence of packets triggering different paths on multiple processing cores.
+Establishing an underestimation for the single worst program path still results in a valid throughput guarantee, but further work is necessary to improve this lower bound.
+
+\afblock{Beyond BPF/XDP}
 This paper focuses on programs using the BPF/XDP toolchain executed on a Netronome SmartNIC.
 For example, a VPN endpoint cannot be reasonably implemented with XDP as the SmartNICs crypto co-processor is currently not accessible from BPF.
 Extending our approach to analyze programs written in Micro-C~\cite{joy-of-micro-c} or with the Netronome P4 SDK~\cite{nfp-p4} is in principle possible but requires further work.
-To identify the \ac{SSP}, programs need to be split into a part without bounded loops and a main loop which iterates over the received packets.
+Our approach relies on program constraints such as bounded loops and a clear division between a program which processes a single packet and a main loop which iterates over the received packets.
+To identify the \ac{SSP}, a program, therefore, needs to be split into those two parts and loop bounds need to be calculated.
+When accessing additional co-processor, \eg{} for fast crypto operations, the cost vector needs to be extended to handle the additional potential bottlenecks.
 Executing different code on multiple processing cores may further complicate the analysis.
 
 \afblock{Other SmartNICs}
-When analyzing programs for other processor-based SmartNICs such as Mellanox Bluefield\cite{bluefield} or Marvel LiquidIO\cite{liquidio}, our approach needs to be adapted to their throughput characteristics.
-As these SmartNICs have memory caches instead of cooperative hyper-threading, a modified throughput heuristic is needed.
+When analyzing programs for other processor-based SmartNICs such as Mellanox Bluefield~\cite{bluefield} or Marvel LiquidIO~\cite{liquidio}, our approach needs to be adapted to their throughput characteristics~\cite{mellanox-performance}.
 Ideally, the manufacturer of each SmartNIC would provide a throughput model which is then used by our approach to enumerate paths ordered by throughput capacity.
 
+To highlight our approach, we chose a SmartNIC which is easier to predict.
+As some SmartNICs have memory caches and branch prediction instead of cooperative hyper-threading and many simple processing cores, the throughput underestimation will likely be less accurate.
+When analyzing the worst-case for such SmartNICs, one must assume that in most cases, the accessed memory locations are not cached and therefore cause worst-case memory access latency and worst-case memory hit rate.
+Similarly, to provide worst-case guarantees, one must assume incorrect branch predictions.
+Our approach still provides throughput guarantees, but the determined guarantee will be more off from the typically experienced throughput.
+Replaying the example packets from our approach will likely cause a much higher throughput than the predicted worst-case since cache misses and branch mispredictions can often be caused only by systematic variations of parts of the packets.
+Incorporating the memory models and branch predictions models from CASTAN~\cite{castan} and SymPerf~\cite{symperf} can help in generating packet traces that are closer to the actual worst-case.
+
+In some cases cache misses or branch mispredictions are impossible to trigger.
+\Eg{} when all bad programs paths access the same memory location or take the same branch direction, the lower throughput bound can be improved.
+Future work could focus on proving whether memory access will always hit the cache and analyze the interaction between different program paths.
+
 \afblock{Network Analysis}
-SmartNIC programs are not running in isolation but are part of a network of programmable and non-programmable devices and applications and often execute only parts of an application.
+SmartNIC programs are not running in isolation but are part of a network of non-programmable and programmable devices and applications and often execute only parts of an application.
 When automatically splitting programs~\cite{flightplan} or NF chains~\cite{lemur} our approach can reason about the performance of program parts.
 The actual worst-case throughput capacity depends on the behavior and interaction of all devices in the network and can be higher than the minimum over the individual devices.
-A next step could be the performance analysis of a network of SmartNICs.
+A next step could be the performance analysis of a network of SmartNICs~\cite{network-optimization}.
 
 \section{Related Work}
 \label{sec:related-work}
@@ -1591,18 +1844,19 @@ We show the possibility of predictable throughput on processors by proposing a m
 
 \afblock{SmartNIC Performance}
 The packet processing performance of SmartNICs is an established topic and we use the same SmartNIC as several previous publications.
-Hohlfeld \etal{}~\cite{xdp-performance} and Hasanin \etal{}~\cite{p4-performance} showed that throughput and latency of BPF/XDP and P4 SmartNIC programs can vary greatly and depends on multiple influencing factors.
-George~\etal{}~\cite{nova}, Dai~\etal{}~\cite{ixp-partitioning}, Wu~\etal{}~\cite{ixp-allocation} and Chen~\etal{}~\cite{shangri-la} optimize SmartNIC programs, but give no guarantee on the resulting performance.
+The current paper is a continuation of our previous work ~\cite{xdp-performance} where we showed that throughput and latency of BPF/XDP programs on Netronome SmartNICs can vary greatly.
+Hasanin~\etal{}~\cite{p4-performance} presented similar results for P4 programs on the same SmartNIC whereas Katsikas~\etal{}~\cite{mellanox-performance} showed similar results for Mellanox SmartNICs.
+George~\etal{}~\cite{nova}, Dai~\etal{}~\cite{ixp-partitioning}, Wu~\etal{}~\cite{ixp-allocation}, and Chen~\etal{}~\cite{shangri-la} optimize SmartNIC programs, but give no guarantee on the resulting performance.
 Qiu~\etal{}~\cite{clara} applies a performance model to unported programs to estimate the performance of a potential ported program.
 Since all these works use traffic traces to estimate the performance, they cannot estimate the throughput for unknown traffic.
-We instead determine throughput guarantees by analyzing programs for their worst-case traffic.
+We instead determine throughput guarantees by analyzing programs for their worst-case.
 
 \afblock{Mitigating Performance Problems}
-Without a throughput guarantee, it is unknown how much overprovisioning is needed to eliminate throughput bottlenecks.
-There is a line of work which assumes that performance problems will happen and then mitigates them.
+Without a throughput guarantee, it is unknown how much overprovisioning is needed to prevent throughput bottlenecks.
+There is a line of work which mitigates performance problems when they occur.
 iPipe~\cite{iPipe} dynamically adapts the offloaded portion of a program, but can only react once it observes an overload.
 FairNIC~\cite{FairNIC} partitions the SmartNIC resources among multiple programs, giving each program exclusive access to a subset of processing cores and caches, thereby limiting an overload to a single program.
-Unlike these approaches, we can tell beforehand whether an overload may happen and how much SmartNIC resources are needed to eliminate throughput bottlenecks.
+Unlike these approaches, we can tell beforehand whether an overload may happen and how much SmartNIC resources are needed to prevent throughput bottlenecks.
 
 \afblock{Non-Performance Program Analysis}
 Formal methods such as symbolic execution have successfully been applied to packet processing programs to analyze non-performance properties such as finding bugs~\cite{vera,p4pktgen,software-dataplane-verification,gauntlet}, verifying reachability~\cite{symnet,software-dataplane-verification} and proving correctness~\cite{vigor,assert-p4,netdiff,jitterbug}.
@@ -1610,17 +1864,28 @@ These approaches rely on similar program properties as our approach, \eg{} no un
 
 \afblock{Performance Analysis}
 We analyze SmartNIC programs for their worst throughput capacity.
-This is similar to worst-case execution time analysis which is a well-established research field~\cite{wcet} and is hard for general programs on general-purpose processors.
-Our problem is easier because we analyze throughput instead of latency, because packet processing programs are sufficiently restricted, and because the targeted SmartNICs have comparably simple processing cores.
+This is similar to worst-case execution time analysis which is a well-established research field~\cite{wcet} and is hard for arbitrary programs on general-purpose processors.
+Our problem is easier because we analyze throughput instead of latency, because packet processing programs are sufficiently restricted, and because the targeted SmartNICs are comparably simple.
 
-Our approach has similarities with using symbolic execution for execution time analysis of packet processing on general-purpose processors.
-Pedrosa~\etal{}~\cite{castan} identify slow program paths but cannot identify the slowest path, despite significantly longer analysis times compared to our approach.
-Chipounov~\etal{}~\cite{s2e} exemplarily analyze the longest path through the Apache HTTP Server's URL parser and Rishabh~\etal{}~\cite{BOLT} analyze the relationship between the worst-case execution time and parameters such as table occupancy in packet processing programs.
-Both of them enumerate {\em all paths} through a program, which is infeasible for many programs.
-Rishabh~\etal{}~\cite{BOLT} suggest restricting the search space by adding additional constraints on the input packet.
+Our approach has similarities and is inspired by using symbolic execution for execution time analysis of packet processing on general-purpose processors.
+Chipounov~\etal{}~\cite{s2e} proposed this idea in S2E by exemplarily analyzing the longest path through the Apache HTTP Server's URL parser.
+We presented a very basic approach (Rath~\etal{}, SymPerf)~\cite{symperf} on analyzing BPF performance on Intel processors, followed by Pedrosa~\etal{} (CASTAN)~\cite{castan} and Rishabh~\etal{} (BOLT)~\cite{BOLT}, which analyze the performance of DPDK programs.
+All of these works analyze the processing latency of a single-threaded program on a general-purpose Intel processor, whereas this paper analyzes throughput on a highly parallelized SmartNIC, which results in some unique challenges.
+S2E, SymPerf, and BOLT enumerate all satisfiable program paths, thereby incurring very long analysis times and the inability to analyze programs with path explosion.
+In contrast, our path enumeration approach provides short analysis times by only analyzing the slowest paths and provides valid throughput guarantees even in the case of path explosion.
+The authors of BOLT suggest restricting the search space by adding additional constraints on the input packet.
 Performance results for a constrained input can however not be generalized for packets beyond these constraints.
-In contrast to this, our approach often runs faster with an unconstrained input, since we stop on the first satisfiable path.
-All these approaches use coarse metrics such as the number of executed instructions and cache misses which cannot easily be mapped to throughput.
+Our approach often runs faster with an unconstrained input, since we stop on the first satisfiable path.
+S2E and BOLT only provide coarse metrics, such as the number of executed instructions and memory accesses which cannot easily be mapped to throughput.
+Both, SymPerf and CASTAN use a memory model to infer the memory latency for a single-threaded program, but do not analyze the worst-case with respect to their memory model.
+We additionally analyze memory throughput for parallelized and multi-threaded execution to underestimate the worst-case throughput.
+
+CASTAN~\cite{castan} is closest to our work, as it performs directed symbolic execution to find bad packet sequences without analyzing all program paths.
+CASTAN is a tool to debug bad performance without giving any performance guarantees.
+Its strength is the ability to find short packet sequences which deterministically result in a similar number of cache misses as long random packet sequences.
+The authors acknowledge the difficulties of analyzing Intel processors and use several heuristics to guide the directed symbolic execution towards bad performance, thereby often finding local maxima instead of a global maximum.
+We not only find bad performance but establish throughput guarantees by tightly underestimating the worst-case throughput capacity.
+To our knowledge, we are the first to incorporate packet size requirements to analyze not only packet-rate but also bit rate performance.
 
 
 \section{Conclusion}
@@ -1640,21 +1905,24 @@ Programs may have huge numbers of paths, such that it is unfeasible to check all
 Instead, we incrementally enumerate paths from slowest to fastest and stop analyzing on the first satisfiable path.
 Our prototype determines throughput guarantees for real programs with an error of at most  \mdata{rate.all}{rel.max.error.n}{.1} and provides tight lower bounds for the processor- and memory-bottlenecked programs with only up to \mdata{rate.all}{rel.max.error.proc.p}{.1} and \mdata{rate.all}{rel.max.error.dram.p}{.1} underestimation.
 
-We enable developers and network operators to determine whether a program meets the throughput requirements.
+We enable developers and network operators to determine if a program meets the throughput requirements.
 When integrated into the development toolchains for SmartNIC programs, the developer can get rapid feedback on the throughput capabilities and can iterate on optimizations until the requirements are met.
 When used for automatic regression tests, changes which lead to undesirable throughput are caught without impacting the production network.
 
 With our throughput guarantees, SmartNICs can be used with the same determinism as programmable match-action pipelines and FPGAs.
-This enables a step towards more freely programmable switches based on processors.
-A network operator does not need to fear throughput problems if the used program has an adequate throughput guarantee.
-Typical programmable match-action pipelines have a fixed packet rate and allow only few processing steps, even on large packets.
+This enables a step towards more freely programmable switches based on processors without sacrificing throughput guarantees.
+A network operator does not need to fear throughput problems if our approach assures that the used program has an adequate throughput guarantee.
+Typical match-action pipelines have a fixed packet rate and allow only few processing steps, even on large packets.
 However, large packets take longer to transmit and therefore allow for more processing time before the next packet arrives.
-With our approach, a processor-based switch can perform many operations on large payloads and still meet the required bit rate guarantee.
+Our approach can assure high bit rate guarantees, even when a program iterates over the complete payload.
+With our approach, a program on a processor-based switch can perform many operations on large payloads and still meet the required bit rates.
 
 
 \begin{acks}
 This work has been funded by the German Research Foundation (DFG) within the Collaborative Research Center (CRC) 1053 ``MAKI -- Multi-Mechanism-Adaption for the Future Internet''.
 \end{acks}
+
+\addvspace{2\baselineskip}%
 
 \bibliographystyle{ACM-Reference-Format}
 \bibliography{literature}
@@ -1663,18 +1931,19 @@ This work has been funded by the German Research Foundation (DFG) within the Col
 \appendix
 
 \section{Artifacts}
+\label{sec:artifacts}
 
-Artifacts are available at \url{https://zenodo.org/record/TODO} or \url{https://github.com/johannes-krude/nfp-pred-artifacts}.
-These can be used to \textbf{repeat} the full evaluation and can be \textbf{reused} to analyze new XDP/BPF programs.
+Artifacts are available at \url{https://zenodo.org/record/5515910} or at \url{https://github.com/johannes-krude/nfp-pred-artifacts}.
+These can be used to \textbf{repeat} the full evaluation and can be \textbf{reused} to analyze new BPF/XDP programs.
 Included is the source code and documentation of the main approach, our modifications to the SmartNIC device driver and firmware, as well as the infrastructure and raw measurement data from our evaluation accompanied by documentation.
 
 \afblock{Requirements}
-It suffices to use Docker on Linux or a single computer with Ubuntu 20.04 to repeat the provided small evaluation example and analzye the precompiled XDP/BPF programs.
+It suffices to use Docker on Linux or a single computer with Ubuntu 20.04 to repeat the provided small evaluation example and analzye the precompiled BPF/XDP programs.
 To repeat the full evaluation, one needs: three computers, a Netronome Agilio CX 2x40 GbE SmartNIC, an additional 2x10 GbE NIC, and a Barefoot Tofino based EdgeCore Wedge BF100-32X switch.
-The proprietary compilers to build the NIC firmware and Tofino P4 program are not included and can be obtained from Netronome and Intel.
+The proprietary compilers to build the NIC firmware and Tofino P4 program are not included and need to be obtained from Netronome and Intel.
 
 \afblock{Implementation}
-The main approach from the paper is implemented as a tool that determines throughput guarantees by incrementally enumerating programs paths of XDP/BPF programs compiled to \acl{NFP} assembly.
+The main approach from the paper is implemented as a tool that determines throughput guarantees by incrementally enumerating programs paths of BPF/XDP programs compiled to \acl{NFP} assembly.
 This tool is implemented in 9600 lines of C++, heavily relies on the \ac{SMT} solver Z3, and is in part inspired by the KLEE symbolic execution engine.
 The evaluation infrastructure consists of 4700 lines of Ruby source code with low-level tools written in C and some small additions of Bash, Python, and P4.
 Our modifications to the SmartNIC device driver and firmware consist of Linux kernel level C and \ac{NFP} assembly.
@@ -1688,7 +1957,7 @@ For \ref{tab:design-choices}, the throughput estimation is executed again on all
 
 The second kind of measurements in the evaluation, are measurements of the actual throughput when executing programs on the SmartNIC.
 These measurements use the example packets from the estimation phase to measure the throughput capacity of each discovered program path.
-These throughput measurements and their comparison to the throughput estimates are presented in \ref{tab:estimation-accuracy} (column 4) and \ref{fig:rate-count-min} (measured throughput).
+These throughput measurements and their comparison to the estimates are presented in \ref{tab:estimation-accuracy} (column 4) and \ref{fig:rate-count-min} (measured throughput).
 Some additional throughput measurements are shown in \ref{fig:wpi} and \ref{fig:wpi-lookup}.
 
 \afblock{Repeating the Evaluation from the Paper}
@@ -1696,13 +1965,13 @@ The full evaluation takes approximately \unit[10]{days} and requires a Netronome
 To enable partial repetition, we structured the evaluation into smaller steps, some of which take significantly less time and do not require special hardware.
 All raw measurements gathered during our evaluation are included, to enable repeating each evaluation step independently of the other steps.
 
-When having only a few minutes to spare, one can try the small evaluation example which estimates the throughput bound of the QUIC LB {\small(IPv4)} example program and compares these estimates with existing measurements.
+When having only a few minutes to spare, one can try the small evaluation example which estimates the throughput bound of the \progname{xdp.quic.lb} example program and compares these estimates with existing measurements.
 With some more available time, one can reanalyze all included measurement data and optionally repeat all throughput estimates.
 In case of having access to the SmartNIC and a Tofino switch, all throughput measurements can be repeated.
 
 \afblock{Reusing the Implementation for New Programs}
-Our implementation of the main approach, as well as the measurement infrastructure can be applied to new real XDP/BPF programs.
-Any XDP/BPF program which adheres to the constraints for \ac{NFP} offloading and our modified NIC firmware and driver can be analyzed for its worst-case throughput.
+Our implementation of the main approach, as well as the measurement infrastructure can be applied to new real BPF/XDP programs.
+Any BPF/XDP program which adheres to the constraints for \ac{NFP} offloading and our modified NIC firmware and driver can be analyzed for its worst-case throughput.
 The implementation supports analyzing for bit rate or packet rate and can be configured to analyze for processing cores throughput, DRAM memory engine throughput, or both.
 For each enumerated path, an example packet is generated which can be used to compare the estimated throughput capacity to measured throughput.
 A detailed description is included which explains how to generate the data as presented in \ref{tab:estimation-accuracy} and \ref{tab:analysis-times} for new XDP/BPf programs.

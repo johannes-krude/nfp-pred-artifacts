@@ -393,6 +393,7 @@ rule :numbers, "numbers-xdp-" do
 		numbers[:early_bitrate] << er*s
 		numbers[:early_z3cputime] << m[:early][3].to_f
 		numbers[:early_cfgcputime] << m[:early][4].to_f
+		numbers[:early_sat_checks] << m[:early][5].to_i
 		if m[:first]
 			numbers[:first_time] << m[:first][0].to_f
 			fr = 800000000.0/m[:first][1].send(convert)*f
@@ -403,6 +404,7 @@ rule :numbers, "numbers-xdp-" do
 			numbers[:first_unsatisfiable] << m[:first][2].to_i
 			numbers[:first_z3cputime] << m[:first][3].to_f
 			numbers[:first_cfgcputime] << m[:first][4].to_f
+			numbers[:first_sat_checks] << m[:first][5].to_i
 		end
 		if m[:last]
 			numbers[:total_time] << m[:last][0].to_f
@@ -410,12 +412,14 @@ rule :numbers, "numbers-xdp-" do
 			numbers[:num_unsatisfiable] << m[:last][2].to_i
 			numbers[:total_z3cputime] << m[:last][3].to_f
 			numbers[:total_cfgcputime] << m[:last][4].to_f
+			numbers[:total_sat_checks] << m[:last][5].to_i
 		else
 			numbers[:min_time] << m[:end][0].to_f
 			numbers[:min_num] << m[:end][1].to_i
 			numbers[:min_unsatisfiable] << m[:end][2].to_i
 			numbers[:min_z3cputime] << m[:end][3].to_f
 			numbers[:min_cfgcputime] << m[:end][4].to_f
+			numbers[:min_sat_checks] << m[:end][5].to_i
 		end
 	end
 
@@ -431,7 +435,11 @@ rule :numbers, "numbers-xdp-" do
 	}
 	[:first_time,
 	 :total_time,
-	 :num_intermediates
+	 :num_intermediates,
+	 :first_z3cputime,
+	 :total_z3cputime,
+	 :first_sat_checks,
+	 :total_sat_checks,
 	].each do |k|
 		next unless numbers.has_key?(k)
 		aggregated[k] = Statistics.confidence_interval_99(numbers[k])
@@ -449,9 +457,17 @@ rule :numbers, "numbers-xdp-" do
 	 :first_unsatisfiable,
 	 :num_unsatisfiable,
 	 :min_unsatisfiable,
+	 :min_z3cputime,
+	 :min_sat_checks,
 	].each do |k|
 		next unless numbers.has_key?(k)
 		aggregated[k] = numbers[k].max
+	end
+
+	if aggregated[:first_time]
+		ft = aggregated[:first_time][2]
+		at = (aggregated[:total_time] || [nil,aggregated[:min_time]])[1]
+		aggregated[:factor_all_path_time] = at/ft
 	end
 
 	z3ratios = []
@@ -513,7 +529,9 @@ rule :units, "numbers-xdp-" do
 
 		(numbers.has_key?(:total_time) ? [numbers[:total_time]].map { |m,a,b| [m/d,[a/d,b/d], (b-m)/d, b/d] } : [])
 		).flatten(1))]
-	end])
+	end]).merge(if numbers.has_key?(:factor_all_path_time);{
+		["", pre: "$\\times{}$\\,"] => {factor_all_path_time: numbers[:factor_all_path_time]},
+	};end||{})
 end
 
 export ".tex", /\Anumbers-(xdp-.*\.k|all)\z/ do
@@ -530,6 +548,13 @@ rule :units, "numbers-all" do
 		percent_all[i] = max if max
 	end
 
+	factor_all = {}
+	[:factor_all_path_time,
+	].each do |i|
+		max = numbers.map { |k,n| [k, n[i]] }.select(&:last).max_by(&:last)
+		factor_all[i] = max if max
+	end
+
 	time_all = {}
 	[:early,
 	 :first,
@@ -544,7 +569,8 @@ rule :units, "numbers-all" do
 	percent_all[:z3ratio_max] = numbers.map { |k,n| [k, n[:z3ratios].max] }.select(&:last).max_by(&:last)
 
 	{
-		["", precision: [""]] => (percent_all.to_a+time_all.to_a).map { |k,v| [k, v.first] },
+		["", precision: [""]] => (percent_all.to_a+factor_all.to_a+time_all.to_a).map { |k,v| [k, v.first] },
+		["", pre: "$\\times{}$\\,"] => factor_all.map { |k,v| [k, v.last] },
 		["", post: {"%":1}] => percent_all.map { |k,v| [k, v.last] },
 	}.merge(Hash[{"ms": 1.0/1000, "s": 1, "m": 60, "h": 60*60}.map do |u, d|
 		[u, time_all.map do |k,v|
@@ -581,17 +607,20 @@ rule :numbers, "compare-xdp-" do
 	if nA[:first_bitrate] && nB[:first_bitrate]
 		result[:improve_first_bitrate] = 100.0/nA[:first_bitrate]*nB[:first_bitrate]-100
 	end
-	if nA[:first_time]
-		nAft = nA[:first_time][2]
-		nBft = (nB[:first_time] || [nil,nB[:min_time]])[1]
-		rel = nBft/nAft
-		result[:improve_first_time] = 100-100*rel
-		result[:factor_first_time]   = rel
-		result[:worse_first_time]   = 100*rel-100
-		result[:worse_first_time_abs] = nBft-nAft
-	end
-	if !nB[:first_time]
-		result[:b_first_min_time] = nB[:min_time]
+	[:time,
+	 :z3cputime,
+	 :sat_checks
+	].each do |k|
+		if nA[:"first_#{k}"]
+			nAft = nA[:"first_#{k}"][2]
+			nBft = (nB[:"first_#{k}"] || [nil,nB[:"min_#{k}"]])[1]
+			rel = nBft/nAft
+			result[:"improve_first_#{k}"] = 100-100*rel
+			result[:"factor_first_#{k}"]   = rel
+		end
+		if !nB[:"first_#{k}"]
+			result[:"b_first_min_#{k}"] = nB[:"min_#{k}"]
+		end
 	end
 
 	result
@@ -637,8 +666,13 @@ rule :numbers, /\Anumbers-.+\.add\./ do
 	if nA[:first_bitrate] && nB[:first_bitrate]
 		result[:first_bitrate] = [nA[:first_bitrate], nB[:first_bitrate]].min
 	end
-	if nA[:first_time] && nB[:first_time]
-		result[:first_time] = (nA[:first_time].zip(nB[:first_time])).map(&:sum)
+	[:first_time,
+	 :first_z3cputime,
+	 :first_sat_checks,
+	].each do |k|
+		if nA[k] && nB[k]
+			result[k] = (nA[k].zip(nB[k])).map(&:sum)
+		end
 	end
 
 	result
@@ -703,7 +737,6 @@ rule :units, "compare-all." do
 	[:improve_early_bitrate,
 	 :improve_first_bitrate,
 	 :improve_first_time,
-	 :worse_first_time,
 	 :improve_num_intermediates,
 	].each do |i|
 		min = numbers.map { |k,n| [k, n[i]] }.select(&:last).min_by(&:last)
@@ -714,6 +747,14 @@ rule :units, "compare-all." do
 
 	factor_all = {}
 	time_lower_bound_all = {}
+	[:factor_first_sat_checks,
+	 :factor_first_z3cputime,
+	].each do |i|
+		min = numbers.map { |k,n| [k, n[i]] }.select(&:last).min_by(&:last)
+		max = numbers.map { |k,n| [k, n[i]] }.select(&:last).max_by(&:last)
+		factor_all[:"#{i}_min"] = min if min
+		factor_all[:"#{i}_max"] = max if max
+	end
 	begin
 		i = :factor_first_time
 		min = numbers.map { |k,n| [k, n[i]] }.select(&:last).min_by(&:last)
@@ -725,15 +766,6 @@ rule :units, "compare-all." do
 		else
 			factor_all[:"#{i}_max"] = max if max 
 		end
-	end
-
-	time_abs_all = {}
-	[:worse_first_time_abs,
-	].each do |i|
-		min = numbers.map { |k,n| [k, n[i]] }.select(&:last).min_by(&:last)
-		max = numbers.map { |k,n| [k, n[i]] }.select(&:last).max_by(&:last)
-		time_abs_all[:"#{i}_min"] = min if min
-		time_abs_all[:"#{i}_max"] = max if max
 	end
 
 	abs_all = {}
@@ -752,11 +784,10 @@ rule :units, "compare-all." do
 	end
 
 	{
-		["", precision: [""], sign: true] => (rel_all.to_a+factor_all.to_a+time_lower_bound_all.to_a+time_abs_all.to_a+abs_all.to_a).map { |k,v| [k, v.first] },
+		["", precision: [""], sign: true] => (rel_all.to_a+factor_all.to_a+time_lower_bound_all.to_a+abs_all.to_a).map { |k,v| [k, v.first] },
 		["", post: {"%":1}, sign: true] => rel_all.map { |k,v| [k, v.last] },
-		["", pre: "$\\times{}$"] => factor_all.map { |k,v| [k, v.last] },
+		["", pre: "$\\times{}$\\,"] => factor_all.map { |k,v| [k, v.last] },
 		["h", pre: "$\\geq{}$"] => time_lower_bound_all.map { |k,v| [k, v.last/60/60] },
-		["s", sign: true] => time_abs_all.map { |k,v| [k, v.last] },
 		["", sign: true]  => abs_all.map { |k,v| [k, v.last] },
 	}
 end
@@ -981,7 +1012,7 @@ rule :units, "rate-xdp-" do
 			:bottleneck => {
 				:mac  => "MAC",
 				:dram => "DRAM",
-				:proc => "processing cores",
+				:proc => "processing",
 			}[numbers[:bottleneck]],
 		}
 	};end || {}
@@ -1077,6 +1108,16 @@ gen "xdp-" do
 			measured_dir: data[:measured_dir],
 		}; end || {})]
 	end
+end
+
+rule :units, "xdp-" do
+	asm = popen("cat", (datafile "programs/#{name}.asm"))
+
+	{"" => {"instructions" => asm.split("\n").size}}
+end
+
+export ".tex", "xdp-" do
+	rule :tex_units
 end
 
 run do

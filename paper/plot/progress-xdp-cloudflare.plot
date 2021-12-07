@@ -1,11 +1,11 @@
-set terminal pdfcairo size 4.237075cm,3cm enhanced color fontscale 0.75 font 'Linux Libertine,10pt'
+set terminal pdfcairo size 4.237075cm,3cm enhanced color fontscale 0.75 font 'Linux Libertine,9pt'
 
 x2 = system('egrep -v " 0$" plot/progress-xdp-cloudflare.k.dat -m 1 | cut -d " " -f 1')
 x2 = ceil(x2)
 bm  = 0.375
 gap = 0.05
 
-set ylabel "Guarantee [Bit/s]    " enhanced
+set ylabel "Guarantee [Bit/s]    " enhanced offset -0.5,0
 set format y "%0.0f G"
 #set yrange [31.5:35]
 set yrange [0:36]
@@ -16,7 +16,7 @@ set format x "%0.1f"
 set xrange [0:x2]
 set xtics 0.5
 
-set lmargin 8.6
+set lmargin 9.1
 set rmargin 1
 set bmargin 2.3
 
